@@ -1,6 +1,10 @@
 {
 	"name": "social-media",
 	"version": "0.0.1",
+	"packageManager": "pnpm@10.32.1",
+	"engines": {
+		"node": "22.x"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build && npm run prepack",
