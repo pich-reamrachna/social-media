@@ -60,6 +60,7 @@
 		"@types/node": "^22",
 		"@vitest/browser-playwright": "^4.1.0",
 		"better-auth": "~1.4.21",
+		"cspell": "^9.7.0",
 		"drizzle-kit": "^0.31.8",
 		"drizzle-orm": "^0.45.1",
 		"eslint": "^9.39.2",
