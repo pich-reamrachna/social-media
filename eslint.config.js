@@ -12,6 +12,16 @@ const gitignore_path = path.resolve(import.meta.dirname, '.gitignore')
 
 export default defineConfig(
 	includeIgnoreFile(gitignore_path),
+	{
+		ignores: [
+			'src/app.d.ts',
+			'*.config.{ts,js,cjs,mjs}',
+			'src/routes/**/+layout.svelte',
+			'src/routes/**/+layout.ts',
+			'src/routes/demo/**/+page.svelte',
+			'src/hooks.ts'
+		]
+	},
 	js.configs.recommended,
 	ts.configs.recommended,
 	svelte.configs.recommended,
