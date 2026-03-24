@@ -55,6 +55,14 @@ export default defineConfig(
 				'error',
 				{
 					selector: 'variable',
+					types: ['boolean'],
+					format: ['snake_case'],
+					prefix: ['is', 'has', 'can', 'should', 'will', 'did'],
+					leadingUnderscore: 'allow',
+					trailingUnderscore: 'allow'
+				},
+				{
+					selector: 'variable',
 					format: ['snake_case', 'UPPER_CASE'],
 					leadingUnderscore: 'allow',
 					trailingUnderscore: 'allow'
