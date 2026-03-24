@@ -41,8 +41,8 @@ export default defineConfig(
 			'prefer-const': 'error',
 			'no-console': ['error', { allow: ['warn', 'error', 'info'] }],
 			'no-debugger': 'error',
-			complexity: ['error', 20],
-			'max-depth': ['error', 3],
+			complexity: ['error', 15],
+			'max-depth': ['error', 2],
 			'no-commented-code/no-commented-code': 'warn',
 			'no-restricted-syntax': [
 				'error',
@@ -74,6 +74,15 @@ export default defineConfig(
 					trailingUnderscore: 'allow'
 				}
 			]
+		}
+	},
+	{
+		files: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'],
+		languageOptions: {
+			parser: ts.parser,
+			parserOptions: {
+				projectService: true
+			}
 		}
 	},
 	{
