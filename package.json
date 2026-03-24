@@ -15,7 +15,7 @@
 		"check:ci": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
-		"lint:eslint": "eslint . --cache --cache-strategy content",
+		"lint:eslint": "eslint .",
 		"lint:prettier": "prettier --check .",
 		"format": "prettier --write .",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
