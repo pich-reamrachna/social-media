@@ -16,6 +16,6 @@ pre-push:
     typecheck:
       run: pnpm check:ci
     unit-tests:
-      run: pnpm test:unit -- --run
+      run: pnpm exec vitest run
     audit:
       run: pnpm audit

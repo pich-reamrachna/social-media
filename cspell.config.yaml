@@ -10,3 +10,4 @@ ignorePaths:
   - .prettierrc
 words:
   - neondatabase
+  - vitest

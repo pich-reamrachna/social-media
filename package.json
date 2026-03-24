@@ -7,7 +7,7 @@
 	},
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build && npm run prepack",
+		"build": "vite build && pnpm run prepack",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''; lefthook install",
 		"prepack": "svelte-kit sync && svelte-package && publint",
@@ -18,7 +18,7 @@
 		"lint:eslint": "eslint .",
 		"lint:prettier": "prettier --check .",
 		"format": "prettier --write .",
-		"test": "npm run test:unit -- --run && npm run test:e2e",
+		"test": "pnpm exec vitest run && pnpm run test:e2e",
 		"test:unit": "vitest",
 		"test:property": "vitest run src/lib/vitest-examples/greet.property.spec.ts",
 		"test:e2e": "playwright test",
