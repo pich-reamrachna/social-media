@@ -73,19 +73,19 @@ export const verification = pgTable(
 	(table) => [index('verification_identifier_idx').on(table.identifier)]
 )
 
-export const userRelations = relations(user, ({ many }) => ({
+export const user_relations = relations(user, ({ many }) => ({
 	sessions: many(session),
 	accounts: many(account)
 }))
 
-export const sessionRelations = relations(session, ({ one }) => ({
+export const session_relations = relations(session, ({ one }) => ({
 	user: one(user, {
 		fields: [session.userId],
 		references: [user.id]
 	})
 }))
 
-export const accountRelations = relations(account, ({ one }) => ({
+export const account_relations = relations(account, ({ one }) => ({
 	user: one(user, {
 		fields: [account.userId],
 		references: [user.id]

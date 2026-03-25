@@ -9,5 +9,10 @@ ignorePaths:
   - package.json
   - .prettierrc
 words:
+  - bursty
+  - hostnames
+  - neonctl
   - neondatabase
+  - pooler
+  - Postg
   - vitest
