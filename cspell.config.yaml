@@ -15,4 +15,5 @@ words:
   - neondatabase
   - pooler
   - Postg
+  - sslmode
   - vitest
