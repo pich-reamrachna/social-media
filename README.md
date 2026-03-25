@@ -1,65 +1,105 @@
-# Svelte library
+# social-media
 
-Everything you need to build a Svelte library, powered by [`sv`](https://npmjs.com/package/sv).
+SvelteKit app/library scaffold with Better Auth, Drizzle ORM, Neon Postgres, Playwright, and Lefthook.
 
-Read more about creating a library [in the docs](https://svelte.dev/docs/kit/packaging).
+## Requirements
 
-## Creating a project
+- Node.js `22.x`
+- `pnpm` `10.x`
+- A Neon Postgres database
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Initial Setup
 
-```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+1. Install dependencies:
 
 ```sh
-# recreate this project
-pnpm dlx sv@0.12.8 create --template library --types ts --add prettier eslint vitest="usages:unit,component" playwright tailwindcss="plugins:typography,forms" drizzle="database:postgresql+postgresql:neon" better-auth="demo:password" sveltekit-adapter="adapter:vercel" --install pnpm ./
+pnpm install
 ```
 
-## Developing
+This also runs the `prepare` script and installs Lefthook for this clone.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+2. Create a local env file:
 
 ```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+cp .env.example .env
 ```
 
-Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
+3. Fill in the environment variables in `.env`:
 
-## Building
+```env
+# Runtime app traffic: Neon pooled URL
+DATABASE_URL="postgresql://user:password@your-host-pooler:5432/db-name?sslmode=require"
 
-To build your library:
+# Drizzle migrations/studio: Neon direct URL
+DATABASE_URL_MIGRATION="postgresql://user:password@your-host:5432/db-name?sslmode=require"
+
+# App origin
+ORIGIN="http://localhost:5173"
+
+# Better Auth secret
+BETTER_AUTH_SECRET="replace-with-a-long-random-secret"
+```
+
+Notes:
+
+- Use the pooled Neon URL for `DATABASE_URL`
+- Use the direct Neon URL for `DATABASE_URL_MIGRATION`
+- Drizzle falls back to `DATABASE_URL` if `DATABASE_URL_MIGRATION` is not set, but the direct URL is the intended setup for migrations and Studio
+
+## Database Setup
+
+Generate the Better Auth schema file, then push the schema to Neon:
 
 ```sh
-npm pack
+pnpm run auth:schema
+pnpm run db:push
 ```
 
-To create a production version of your showcase app:
+Useful database commands:
 
 ```sh
-npm run build
+pnpm run db:generate
+pnpm run db:migrate
+pnpm run db:studio
 ```
 
-You can preview the production build with `npm run preview`.
+## Run The App
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
-
-## Publishing
-
-Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
-
-To publish your library to [npm](https://www.npmjs.com):
+Start the dev server:
 
 ```sh
-npm publish
+pnpm dev
 ```
+
+The app will usually be available at `http://localhost:5173`.
+
+## Quality Checks
+
+Run the main checks locally:
+
+```sh
+pnpm run check:ci
+pnpm run lint
+pnpm run test
+```
+
+## Lefthook
+
+This repo uses Lefthook for `pre-commit` and `pre-push`.
+
+If hooks do not run, reinstall them manually:
+
+```sh
+pnpm exec lefthook install
+```
+
+If `.git/hooks` only contains sample files, Lefthook is not installed for that clone yet.
+
+## CI Behavior
+
+GitHub Actions CI currently runs on:
+
+- all pull requests
+- pushes to `main`
+
+Pushing a feature branch without opening a pull request will not trigger CI.
