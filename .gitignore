@@ -9,6 +9,7 @@ node_modules
 /build
 /dist
 .fast-check/
+debug.log
 
 # OS
 .DS_Store
