@@ -9,7 +9,9 @@
 		"overrides": {
 			"esbuild": "^0.27.4",
 			"lodash": "^4.17.23",
-			"cookie": "^0.7.0"
+			"cookie": "^0.7.0",
+			"picomatch": "^4.0.4",
+			"smol-toml": "^1.6.1"
 		}
 	},
 	"scripts": {
