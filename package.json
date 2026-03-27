@@ -27,7 +27,7 @@
 		"dev": "vite dev",
 		"build": "vite build && pnpm run prepack",
 		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''; lefthook install",
+		"prepare": "svelte-kit sync || echo ''; pnpm exec lefthook install",
 		"prepack": "svelte-kit sync && svelte-package && publint",
 		"check": "svelte-kit sync && svelte-fast-check --incremental",
 		"check:ci": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
