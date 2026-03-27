@@ -6,7 +6,17 @@
 		"node": "22.x"
 	},
 	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild",
+			"lefthook"
+		],
+		"ignoredBuiltDependencies": [
+			"@prisma/client",
+			"better-sqlite3"
+		],
 		"overrides": {
+			"minimatch@3>brace-expansion": "^2.0.1",
+			"brace-expansion": "^5.0.5",
 			"esbuild": "^0.27.4",
 			"lodash": "^4.17.23",
 			"cookie": "^0.7.0",
@@ -18,7 +28,7 @@
 		"dev": "vite dev",
 		"build": "vite build && pnpm run prepack",
 		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''; lefthook install",
+		"prepare": "svelte-kit sync || echo ''; pnpm exec lefthook install",
 		"prepack": "svelte-kit sync && svelte-package && publint",
 		"check": "svelte-kit sync && svelte-fast-check --incremental",
 		"check:ci": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -77,7 +87,7 @@
 		"cspell": "^9.7.0",
 		"drizzle-kit": "^0.31.8",
 		"drizzle-orm": "^0.45.1",
-		"eslint": "^9.39.2",
+		"eslint": "^9.39.4",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-no-commented-code": "^1.0.10",
 		"eslint-plugin-svelte": "^3.14.0",
@@ -100,5 +110,8 @@
 	},
 	"keywords": [
 		"svelte"
-	]
+	],
+	"dependencies": {
+		"cloudinary": "^2.9.0"
+	}
 }
