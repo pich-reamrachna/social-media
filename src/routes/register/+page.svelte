@@ -1,16 +1,22 @@
 <script lang="ts">
 	let username = $state('')
 	let password = $state('')
-	let should_remember_me = $state(false)
+	let confirm_password = $state('')
+
 	let is_show_password = $state(false)
 
-	// placeholder for login stuff, will change later
-	const handle_sign_in = (e: Event) => {
+	const handle_sign_up = (e: Event) => {
 		e.preventDefault()
-		console.log('Authenticating:', { username, password, should_remember_me })
+
+		if (password !== confirm_password) {
+			console.warn('Registration failed: Passwords do not match')
+			alert('Passwords do not match!')
+			return
+		}
+
+		console.info('Registering:', { username, password })
 	}
 
-	// toggle show password
 	const toggle_password = () => {
 		is_show_password = !is_show_password
 	}
@@ -45,7 +51,7 @@
 				<p>We value your privacy and online safety.</p>
 			</div>
 		</div>
-		<!-- The 5 columns -->
+
 		<div class="absolute right-16 bottom-16 flex items-end gap-1 opacity-60">
 			<div class="h-8 w-1 bg-gray-700"></div>
 			<div class="h-16 w-1 bg-gray-600"></div>
@@ -59,12 +65,10 @@
 		class="flex w-full flex-col items-center justify-center bg-[#111111] p-8 sm:p-12 lg:w-1/2 lg:p-24"
 	>
 		<div class="w-full max-w-md">
-			<div class="mb-10">
-				<h2 class="mb-2 text-3xl font-semibold tracking-tight text-white">
-					See What's Happening Today
-				</h2>
+			<div class="mb-12">
+				<h2 class="mb-2 text-3xl font-semibold tracking-tight text-white">Join Today.</h2>
 				<p class="text-sm text-gray-400">
-					Access your
+					Create your
 					<span
 						class="bg-linear-to-br from-[#ff3377] to-[#ff7eb3] bg-clip-text font-bold text-transparent italic"
 					>
@@ -73,11 +77,11 @@
 				</p>
 			</div>
 
-			<form onsubmit={handle_sign_in} class="space-y-6">
+			<form onsubmit={handle_sign_up} class="space-y-6">
 				<div>
 					<label
 						for="username"
-						class="mb-2 block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
+						class="mb-3 block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
 					>
 						Username
 					</label>
@@ -85,27 +89,19 @@
 						type="text"
 						id="username"
 						bind:value={username}
-						placeholder="Enter your username"
+						placeholder="Choose a username"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
 						required
 					/>
 				</div>
 
 				<div>
-					<div class="mb-2 flex items-center justify-between">
-						<label
-							for="password"
-							class="block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
-						>
-							Password
-						</label>
-						<a
-							href="/login"
-							class="text-[10px] font-medium tracking-widest text-[#ff5c8d] uppercase transition-colors hover:text-[#ff7eb3]"
-						>
-							Forgot Password?
-						</a>
-					</div>
+					<label
+						for="password"
+						class="mb-3 block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
+					>
+						Password
+					</label>
 					<div class="relative">
 						<input
 							type={is_show_password ? 'text' : 'password'}
@@ -160,50 +156,37 @@
 					</div>
 				</div>
 
-				<div class="mt-4 flex items-center">
-					<div class="relative flex items-center">
-						<input
-							type="checkbox"
-							id="rememberMe"
-							bind:checked={should_remember_me}
-							class="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-700 bg-transparent transition-all checked:border-[#ff5c8d] checked:bg-[#ff5c8d]"
-						/>
-						<span
-							class="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100"
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-3 w-3"
-								viewBox="0 0 20 20"
-								fill="currentColor"
-							>
-								<path
-									fill-rule="evenodd"
-									d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-									clip-rule="evenodd"
-								/>
-							</svg>
-						</span>
-					</div>
-					<label for="maintainSync" class="ml-3 cursor-pointer text-sm text-gray-400 select-none">
-						Stay Logged In
+				<div>
+					<label
+						for="confirm_password"
+						class="mb-3 block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
+					>
+						Confirm Password
 					</label>
+					<input
+						type={is_show_password ? 'text' : 'password'}
+						id="confirm_password"
+						bind:value={confirm_password}
+						placeholder="••••••••••••"
+						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
+						required
+					/>
 				</div>
 
-				<div class="pt-4">
+				<div class="pt-6">
 					<button
 						type="submit"
 						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99]"
 					>
-						Sign In
+						Create Account
 					</button>
 				</div>
 			</form>
 
 			<div class="mt-12 text-center text-sm text-gray-500">
-				New to the Y?
-				<a href="/register" class="ml-1 text-[#ff5c8d] transition-colors hover:text-[#ff7eb3]">
-					Sign Up Here
+				Already have an account?
+				<a href="/login" class="ml-1 text-[#ff5c8d] transition-colors hover:text-[#ff7eb3]">
+					Sign In Here
 				</a>
 			</div>
 		</div>
