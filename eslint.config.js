@@ -57,7 +57,7 @@ export default defineConfig(
 					selector: 'variable',
 					types: ['boolean'],
 					format: ['snake_case'],
-					prefix: ['is', 'has', 'can', 'should', 'will', 'did'],
+					prefix: ['is_', 'has_', 'can_', 'should_', 'will_', 'did_'],
 					leadingUnderscore: 'allow',
 					trailingUnderscore: 'allow'
 				},
