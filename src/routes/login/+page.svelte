@@ -119,6 +119,8 @@
 						<button
 							type="button"
 							onclick={toggle_password}
+							aria-label={is_show_password ? 'Hide password' : 'Show password'}
+							aria-pressed={is_show_password}
 							class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-500 transition-colors hover:text-gray-300"
 						>
 							{#if is_show_password}
@@ -165,7 +167,7 @@
 					<div class="relative flex items-center">
 						<input
 							type="checkbox"
-							id="rememberMe"
+							id="should_remember_me"
 							bind:checked={should_remember_me}
 							class="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-700 bg-transparent transition-all checked:border-[#ff5c8d] checked:bg-[#ff5c8d]"
 						/>

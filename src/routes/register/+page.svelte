@@ -16,7 +16,7 @@
 			return
 		}
 
-		console.info('Registering:', { username, password })
+		console.info('Registered!')
 	}
 
 	const toggle_password = () => {
