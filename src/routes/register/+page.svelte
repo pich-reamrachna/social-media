@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths'
+
 	let username = $state('')
 	let password = $state('')
 	let confirm_password = $state('')
@@ -185,7 +187,10 @@
 
 			<div class="mt-12 text-center text-sm text-gray-500">
 				Already have an account?
-				<a href="/login" class="ml-1 text-[#ff5c8d] transition-colors hover:text-[#ff7eb3]">
+				<a
+					href={resolve('/login')}
+					class="ml-1 text-[#ff5c8d] transition-colors hover:text-[#ff7eb3]"
+				>
 					Sign In Here
 				</a>
 			</div>

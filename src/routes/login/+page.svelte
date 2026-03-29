@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths'
+
 	let username = $state('')
 	let password = $state('')
 	let should_remember_me = $state(false)
@@ -7,7 +9,6 @@
 	// placeholder for login stuff, will change later
 	const handle_sign_in = (e: Event) => {
 		e.preventDefault()
-		console.log('Authenticating:', { username, password, should_remember_me })
 	}
 
 	// toggle show password
@@ -100,7 +101,7 @@
 							Password
 						</label>
 						<a
-							href="/login"
+							href={resolve('/login')}
 							class="text-[10px] font-medium tracking-widest text-[#ff5c8d] uppercase transition-colors hover:text-[#ff7eb3]"
 						>
 							Forgot Password?
@@ -185,7 +186,10 @@
 							</svg>
 						</span>
 					</div>
-					<label for="maintainSync" class="ml-3 cursor-pointer text-sm text-gray-400 select-none">
+					<label
+						for="should_remember_me"
+						class="ml-3 cursor-pointer text-sm text-gray-400 select-none"
+					>
 						Stay Logged In
 					</label>
 				</div>
@@ -202,7 +206,10 @@
 
 			<div class="mt-12 text-center text-sm text-gray-500">
 				New to the Y?
-				<a href="/register" class="ml-1 text-[#ff5c8d] transition-colors hover:text-[#ff7eb3]">
+				<a
+					href={resolve('/register')}
+					class="ml-1 text-[#ff5c8d] transition-colors hover:text-[#ff7eb3]"
+				>
 					Sign Up Here
 				</a>
 			</div>
