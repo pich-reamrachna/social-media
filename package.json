@@ -22,7 +22,7 @@
 			"cookie": "^0.7.0",
 			"picomatch": "^4.0.4",
 			"smol-toml": "^1.6.1",
-			"samlify>camelcase": "7"
+			"camelcase": "5"
 		}
 	},
 	"scripts": {
@@ -115,7 +115,6 @@
 	"dependencies": {
 		"@better-auth/infra": "^0.1.13",
 		"@better-auth/sso": "1.4.22",
-		"camelcase": "^7.0.1",
 		"cloudinary": "^2.9.0"
 	}
 }
