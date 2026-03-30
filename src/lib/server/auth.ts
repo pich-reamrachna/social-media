@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth/minimal'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { username } from 'better-auth/plugins'
+import { dash } from '@better-auth/infra'
 import { env } from '$env/dynamic/private'
 import { getRequestEvent } from '$app/server'
 import { db } from '$lib/server/db'
@@ -11,5 +12,5 @@ export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
 	database: drizzleAdapter(db, { provider: 'pg' }),
 	emailAndPassword: { enabled: true },
-	plugins: [username(), sveltekitCookies(getRequestEvent)] // make sure this is the last plugin in the array
+	plugins: [username(), dash(), sveltekitCookies(getRequestEvent)] // make sure this is the last plugin in the array
 })

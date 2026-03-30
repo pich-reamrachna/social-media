@@ -21,7 +21,8 @@
 			"lodash": "^4.17.23",
 			"cookie": "^0.7.0",
 			"picomatch": "^4.0.4",
-			"smol-toml": "^1.6.1"
+			"smol-toml": "^1.6.1",
+			"camelcase": "5"
 		}
 	},
 	"scripts": {
@@ -69,7 +70,7 @@
 		"svelte": "^5.0.0"
 	},
 	"devDependencies": {
-		"@better-auth/cli": "~1.4.21",
+		"@better-auth/cli": "~1.4.22",
 		"@eslint/compat": "^2.0.2",
 		"@eslint/js": "^9.39.2",
 		"@neondatabase/serverless": "^1.0.2",
@@ -83,7 +84,7 @@
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/node": "^22",
 		"@vitest/browser-playwright": "^4.1.0",
-		"better-auth": "~1.4.21",
+		"better-auth": "1.4.22",
 		"cspell": "^9.7.0",
 		"drizzle-kit": "^0.31.8",
 		"drizzle-orm": "^0.45.1",
@@ -112,6 +113,8 @@
 		"svelte"
 	],
 	"dependencies": {
+		"@better-auth/infra": "^0.1.13",
+		"@better-auth/sso": "1.4.22",
 		"cloudinary": "^2.9.0"
 	}
 }
