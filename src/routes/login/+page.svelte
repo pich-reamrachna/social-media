@@ -6,11 +6,6 @@
 	let should_remember_me = $state(false)
 	let is_show_password = $state(false)
 
-	// placeholder for login stuff, will change later
-	const handle_sign_in = (e: Event) => {
-		e.preventDefault()
-	}
-
 	// toggle show password
 	const toggle_password = () => {
 		is_show_password = !is_show_password
@@ -74,7 +69,7 @@
 				</p>
 			</div>
 
-			<form onsubmit={handle_sign_in} class="space-y-6">
+			<form method="POST" class="space-y-6">
 				<div>
 					<label
 						for="username"
@@ -85,6 +80,7 @@
 					<input
 						type="text"
 						id="username"
+						name="username"
 						bind:value={username}
 						placeholder="Enter your username"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
@@ -111,6 +107,7 @@
 						<input
 							type={is_show_password ? 'text' : 'password'}
 							id="password"
+							name="password"
 							bind:value={password}
 							placeholder="••••••••••••"
 							class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"

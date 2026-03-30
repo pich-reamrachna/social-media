@@ -1,23 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
 
+	let email = $state('')
 	let username = $state('')
 	let password = $state('')
 	let confirm_password = $state('')
 
 	let is_show_password = $state(false)
-
-	const handle_sign_up = (e: Event) => {
-		e.preventDefault()
-
-		if (password !== confirm_password) {
-			console.warn('Registration failed: Passwords do not match')
-			alert('Passwords do not match!')
-			return
-		}
-
-		console.info('Registered!')
-	}
 
 	const toggle_password = () => {
 		is_show_password = !is_show_password
@@ -79,7 +68,25 @@
 				</p>
 			</div>
 
-			<form onsubmit={handle_sign_up} class="space-y-6">
+			<form method="POST" class="space-y-6">
+				<div>
+					<label
+						for="email"
+						class="mb-3 block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
+					>
+						Email
+					</label>
+					<input
+						type="text"
+						id="email"
+						name="email"
+						bind:value={email}
+						placeholder="Type your email address"
+						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
+						required
+					/>
+				</div>
+
 				<div>
 					<label
 						for="username"
@@ -90,6 +97,7 @@
 					<input
 						type="text"
 						id="username"
+						name="username"
 						bind:value={username}
 						placeholder="Choose a username"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
@@ -108,6 +116,7 @@
 						<input
 							type={is_show_password ? 'text' : 'password'}
 							id="password"
+							name="password"
 							bind:value={password}
 							placeholder="••••••••••••"
 							class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
@@ -168,6 +177,7 @@
 					<input
 						type={is_show_password ? 'text' : 'password'}
 						id="confirm_password"
+						name="confirm_password"
 						bind:value={confirm_password}
 						placeholder="••••••••••••"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
