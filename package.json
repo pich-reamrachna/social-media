@@ -112,6 +112,7 @@
 		"svelte"
 	],
 	"dependencies": {
+		"@better-auth/infra": "^0.1.13",
 		"cloudinary": "^2.9.0"
 	}
 }
