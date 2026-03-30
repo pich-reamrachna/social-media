@@ -1,4 +1,3 @@
-// src/routes/login/+page.server.ts
 import { fail, redirect } from '@sveltejs/kit'
 import { APIError } from 'better-auth/api'
 import { auth } from '$lib/server/auth'

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
+	import SideNav from '$lib/components/SideNav.svelte'
 	import './home.css'
 
 	interface PageData {
@@ -42,13 +43,25 @@
 
 	let active_tab = $state<'for-you' | 'following'>('for-you')
 	let search_query = $state('')
-	let issettingsopen = $state(false)
+	let is_settings_open = $state(false)
 	let post_draft = $state('')
 	const liked_posts = $state<Record<string, boolean>>({})
 	const like_count_override = $state<Record<string, number>>({})
 	const echoed_posts = $state<Record<string, boolean>>({})
 	const echo_count_override = $state<Record<string, number>>({})
 	const followed_users = $state<Record<string, boolean>>({})
+
+	let is_posting = $state(false)
+	let is_error_banner_visible = $state(false)
+	let toast = $state<{
+		type: 'success' | 'error' | 'warning' | 'loading'
+		message: string
+		visible: boolean
+	}>({
+		type: 'success',
+		message: '',
+		visible: false
+	})
 
 	function format_count(n: number): string {
 		if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
@@ -73,134 +86,110 @@
 	function handle_post(e: Event): void {
 		e.preventDefault()
 		if (!post_draft.trim()) return
-		post_draft = ''
+		is_posting = true
+		show_toast('loading', 'Posting...')
+		setTimeout(() => {
+			post_draft = ''
+			is_posting = false
+			show_toast('success', 'Post created!')
+		}, 1200)
+	}
+
+	function filter_posts() {
+		const q = search_query.toLowerCase().trim()
+		if (!q) return data.posts
+		return data.posts.filter(
+			(post) =>
+				post.content.toLowerCase().includes(q) ||
+				post.author.name.toLowerCase().includes(q) ||
+				post.author.handle.toLowerCase().includes(q)
+		)
+	}
+
+	function show_toast(
+		type: 'success' | 'error' | 'warning' | 'loading',
+		message: string,
+		duration = 3000
+	) {
+		toast = { type, message, visible: true }
+		if (type !== 'loading') {
+			setTimeout(() => {
+				toast.visible = false
+			}, duration)
+		}
+	}
+
+	function refresh_feed() {
+		show_toast('loading', 'Refreshing...')
+		setTimeout(() => {
+			show_toast('success', 'Feed refreshed!')
+			is_error_banner_visible = false
+		}, 1500)
 	}
 </script>
 
 <div class="home-shell">
-	<!-- LEFT SIDEBAR -->
-	<aside class="left-sidebar">
-		<div class="logo">
-			<span class="logo-mark">Y</span>
+	{#if toast.visible}
+		<div
+			class="toast"
+			class:toast-success={toast.type === 'success'}
+			class:toast-error={toast.type === 'error'}
+			class:toast-warning={toast.type === 'warning'}
+			class:toast-loading={toast.type === 'loading'}
+		>
+			{#if toast.type === 'loading'}
+				<div class="toast-spinner"></div>
+			{:else if toast.type === 'success'}
+				<svg class="toast-icon" fill="currentColor" viewBox="0 0 20 20">
+					<path
+						fill-rule="evenodd"
+						d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+						clip-rule="evenodd"
+					/>
+				</svg>
+			{:else if toast.type === 'error'}
+				<svg class="toast-icon" fill="currentColor" viewBox="0 0 20 20">
+					<path
+						fill-rule="evenodd"
+						d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+						clip-rule="evenodd"
+					/>
+				</svg>
+			{:else}
+				<svg class="toast-icon" fill="currentColor" viewBox="0 0 20 20">
+					<path
+						fill-rule="evenodd"
+						d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+						clip-rule="evenodd"
+					/>
+				</svg>
+			{/if}
+			<span class="toast-message">{toast.message}</span>
 		</div>
+	{/if}
 
-		<nav class="nav-list">
-			<a href={resolve('/home')} class="nav-item active">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="nav-icon"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-					/>
-				</svg>
-				<span>Home</span>
-			</a>
-			<!-- eslint-disable-next-line -->
-			<a href={resolve('/explore' as any)} class="nav-item">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="nav-icon"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-					/>
-				</svg>
-				<span>Explore</span>
-			</a>
-			<!-- eslint-disable-next-line -->
-			<a href={resolve('/notifications' as any)} class="nav-item">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="nav-icon"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-					/>
-				</svg>
-				<span>Notifications</span>
-			</a>
-			<!-- eslint-disable-next-line -->
-			<a href={resolve('/messages' as any)} class="nav-item">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="nav-icon"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-					/>
-				</svg>
-				<span>Messages</span>
-			</a>
-			<!-- eslint-disable-next-line -->
-			<a href={resolve('/profile' as any)} class="nav-item">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="nav-icon"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-					/>
-				</svg>
-				<span>Profile</span>
-			</a>
-		</nav>
-
-		<div class="current-user">
-			<img
-				src={data.current_user.avatar_url}
-				alt={data.current_user.name}
-				class="current-user-avatar"
-			/>
-			<div class="current-user-info">
-				<span class="current-user-name">{data.current_user.name}</span>
-				<span class="current-user-handle">@{data.current_user.handle}</span>
+	{#if is_error_banner_visible}
+		<div class="error-banner">
+			<div class="error-banner-content">
+				<span class="error-banner-text">🌐 No Internet Connection</span>
+				<button type="button" class="error-banner-refresh" onclick={refresh_feed}> Refresh </button>
 			</div>
 		</div>
-	</aside>
+	{/if}
 
-	<!-- MAIN FEED -->
+	<SideNav current_user={data.current_user} active_route={resolve('/home')} />
+
 	<main class="feed-column">
 		<div class="mobile-header">
-			<div class="mobile-title-wrap">
-				<span class="mobile-logo-mark">Echo</span>
-			</div>
+			<span class="mobile-logo">Y</span>
 			<img src={data.current_user.avatar_url} alt={data.current_user.name} class="mobile-avatar" />
 		</div>
+
 		<div class="mobile-breaking">
 			<span class="breaking-label">BREAKING</span>
 			<span class="breaking-text">Global markets react to new decentralization policies</span>
 		</div>
+
 		<div class="feed-topbar">
 			<div class="feed-tabs">
 				<button
@@ -210,7 +199,6 @@
 				>
 					For You
 				</button>
-				<div class="tab-gap"></div>
 				<button
 					class="tab-btn"
 					class:tab-active={active_tab === 'following'}
@@ -222,14 +210,18 @@
 
 			<div class="feed-controls">
 				<div class="search-group">
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="search-icon">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="search-icon"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path
-							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-							stroke="currentColor"
-							stroke-width="2"
-							fill="none"
 							stroke-linecap="round"
 							stroke-linejoin="round"
+							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 						/>
 					</svg>
 					<input
@@ -242,38 +234,43 @@
 				</div>
 
 				<button
-					class="settings-btn"
 					type="button"
+					class="settings-btn"
 					aria-label="Settings"
-					onclick={() => (issettingsopen = !issettingsopen)}
+					onclick={() => (is_settings_open = !is_settings_open)}
 				>
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="settings-icon">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="settings-icon"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path
-							d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						/>
-						<path
-							d="M19.4 15a7.924 7.924 0 00.6-3 7.924 7.924 0 00-.6-3L21 7l-2.2-3.8-2.7 1a8.094 8.094 0 00-2.6-1.5l-.4-2.8H9.9l-.4 2.8a8.094 8.094 0 00-2.6 1.5l-2.7-1L2 7l1 2.0a7.924 7.924 0 000 6l-1 2.0 2.2 3.8 2.7-1a8.094 8.094 0 002.6 1.5l.4 2.8h4.4l.4-2.8a8.094 8.094 0 002.6-1.5l2.7 1L22 17l-2.6-2z"
-							stroke="currentColor"
-							stroke-width="2"
-							fill="none"
 							stroke-linecap="round"
 							stroke-linejoin="round"
+							d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+						/>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
 						/>
 					</svg>
 				</button>
 			</div>
 		</div>
 
-		{#if issettingsopen}
+		{#if is_settings_open}
 			<section class="settings-panel">
 				<h4>Settings</h4>
 				<ul>
 					<li><button type="button" class="settings-option">Dark Mode</button></li>
-					<li><button type="button" class="settings-option">Notifications</button></li>
+					<li><button type="button" class="settings-option">Light Mode</button></li>
 					<li><button type="button" class="settings-option">Privacy</button></li>
+					<li><button type="button" class="settings-option">Language</button></li>
+					<li><button type="button" class="settings-option">Logout</button></li>
 				</ul>
 			</section>
 		{/if}
@@ -342,20 +339,15 @@
 							</svg>
 						</button>
 					</div>
-					<button type="submit" class="submit-post-btn" disabled={!post_draft.trim()}>
-						Post
+					<button type="submit" class="submit-post-btn" disabled={!post_draft.trim() || is_posting}>
+						{is_posting ? 'Posting...' : 'Post'}
 					</button>
 				</div>
 			</div>
 		</form>
 
-		{#each data.posts.filter((post) => {
-			const q = search_query.toLowerCase().trim()
-			if (!q) return true
-			return post.content.toLowerCase().includes(q) || post.author.name
-					.toLowerCase()
-					.includes(q) || post.author.handle.toLowerCase().includes(q)
-		}) as post (post.id)}
+		<!-- Posts -->
+		{#each filter_posts() as post (post.id)}
 			<article class="post-card">
 				<div class="post-header">
 					<img src={post.author.avatar_url} alt={post.author.name} class="post-avatar" />
@@ -522,7 +514,6 @@
 			<h3 class="sidebar-card-title">Who to Follow</h3>
 			<ul class="follow-list">
 				{#each data.who_to_follow as user (user.handle)}
-					<!-- eslint-disable-next-line -->
 					{@const is_following = followed_users[user.handle] ?? false}
 					<li class="follow-item">
 						<img src={user.avatar_url} alt={user.name} class="follow-avatar" />
@@ -544,13 +535,10 @@
 		</div>
 
 		<footer class="sidebar-footer">
-			<!-- eslint-disable-next-line -->
-			<a href={resolve('/terms' as any)}>Terms of Service</a>
-			<!-- eslint-disable-next-line -->
-			<a href={resolve('/privacy' as any)}>Privacy Policy</a>
-			<!-- eslint-disable-next-line -->
-			<a href={resolve('/cookies' as any)}>Cookie Policy</a>
-			<span>© 2024 Y Inc.</span>
+			<a href={resolve('/terms')}>Terms of Service</a>
+			<a href={resolve('/privacy')}>Privacy Policy</a>
+			<a href={resolve('/cookies')}>Cookie Policy</a>
+			<span>© 2026 Y.</span>
 		</footer>
 	</aside>
 </div>
