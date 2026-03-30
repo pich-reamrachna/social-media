@@ -10,6 +10,15 @@ const plugins = [username(), sveltekitCookies(getRequestEvent)]
 
 type AuthPlugin = (typeof plugins)[number]
 
+const is_module_not_found_error = (error: unknown): boolean => {
+	if (!(error instanceof Error)) return false
+
+	return (
+		('code' in error && error.code === 'ERR_MODULE_NOT_FOUND') ||
+		error.message.includes('Cannot find module')
+	)
+}
+
 let dash_plugin: AuthPlugin | undefined
 try {
 	const load_infra = new Function("return import('@better-auth/infra')") as () => Promise<{
@@ -17,7 +26,11 @@ try {
 	}>
 	const infra = await load_infra()
 	dash_plugin = infra.dash?.()
-} catch {
+} catch (error) {
+	if (!is_module_not_found_error(error)) {
+		throw error
+	}
+
 	// @better-auth/infra is optional in this setup; continue without dash
 	dash_plugin = undefined
 }
