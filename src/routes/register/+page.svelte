@@ -15,6 +15,9 @@
 
 	let is_show_password = $state(false)
 
+	let email_status = $state<'idle' | 'invalid' | 'valid'>('idle')
+	let email_message = $state('')
+
 	let username_status = $state<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle')
 	let username_message = $state('')
 	let username_timer: ReturnType<typeof setTimeout> | undefined = undefined
@@ -26,6 +29,25 @@
 	let confirm_password_message = $state('')
 
 	const { form } = $props<{ form: ActionData }>()
+
+	const check_email = (value: string) => {
+		const trimmed = value.trim()
+
+		if (!trimmed) {
+			email_status = 'idle'
+			email_message = ''
+			return
+		}
+
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+			email_status = 'invalid'
+			email_message = 'Invalid Email'
+			return
+		}
+
+		email_status = 'valid'
+		email_message = ''
+	}
 
 	const check_username = (value: string) => {
 		const trimmed = value.trim()
@@ -223,10 +245,16 @@
 						id="email"
 						name="email"
 						bind:value={email}
+						oninput={(e) => check_email((e.currentTarget as HTMLInputElement).value)}
 						placeholder="Type your email address"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
 						required
 					/>
+					{#if email_message}
+						<p class:text-red-400={email_status === 'invalid'} class="mt-2 text-sm">
+							{email_message}
+						</p>
+					{/if}
 				</div>
 
 				<div>
