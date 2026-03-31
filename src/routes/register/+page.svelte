@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
+	import { auth_client } from '$lib/auth-client'
 	import type { ActionData } from './$types'
+	import { MIN_USERNAME_LENGTH, MAX_USERNAME_LENGTH } from '$lib/constants/auth'
 
 	let email = $state('')
 	let username = $state('')
@@ -9,10 +11,71 @@
 
 	let is_show_password = $state(false)
 
+	let username_status = $state<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle')
+	let username_message = $state('')
+	let username_timer: ReturnType<typeof setTimeout> | undefined = undefined
+
 	const { form } = $props<{ form: ActionData }>()
 
 	const toggle_password = () => {
 		is_show_password = !is_show_password
+	}
+
+	const check_username = (value: string) => {
+		const trimmed = value.trim()
+		const normalized = trimmed.toLowerCase()
+
+		if (!normalized) {
+			username_status = 'idle'
+			username_message = ''
+			return
+		}
+
+		if (!/^[a-z0-9._]+$/.test(normalized)) {
+			username_status = 'error'
+			username_message = 'Username allow only alphanumeric, dots, and hyphens'
+			return
+		}
+
+		if (username_timer) clearTimeout(username_timer)
+
+		if (!trimmed) {
+			username_status = 'idle'
+			username_message = ''
+			return
+		}
+
+		if (trimmed.length < MIN_USERNAME_LENGTH) {
+			username_status = 'error'
+			username_message = 'Username must be at least 3 characters'
+			return
+		} else if (trimmed.length > MAX_USERNAME_LENGTH) {
+			username_status = 'error'
+			username_message = 'Username must be less than 20 characters'
+		}
+
+		username_status = 'checking'
+		username_message = 'Checking username...'
+
+		username_timer = setTimeout(async () => {
+			const { data, error } = await auth_client.isUsernameAvailable({
+				username: normalized
+			})
+
+			if (error) {
+				username_status = 'error'
+				username_message = 'Could not check username right now'
+				return
+			}
+
+			if (data?.available) {
+				username_status = 'available'
+				username_message = 'Username is available'
+			} else {
+				username_status = 'taken'
+				username_message = 'Username is already taken'
+			}
+		}, 400)
 	}
 </script>
 
@@ -110,10 +173,21 @@
 						id="username"
 						name="username"
 						bind:value={username}
+						oninput={(e) => check_username((e.currentTarget as HTMLInputElement).value)}
 						placeholder="Choose a username"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
 						required
 					/>
+					{#if username_message}
+						<p
+							class:text-gray-400={username_status === 'checking'}
+							class:text-green-400={username_status === 'available'}
+							class:text-red-400={username_status === 'taken' || username_status === 'error'}
+							class="mt-2 text-sm"
+						>
+							{username_message}
+						</p>
+					{/if}
 				</div>
 
 				<div>

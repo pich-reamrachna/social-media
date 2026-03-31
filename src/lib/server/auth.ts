@@ -5,8 +5,19 @@ import { username } from 'better-auth/plugins'
 import { env } from '$env/dynamic/private'
 import { getRequestEvent } from '$app/server'
 import { db } from '$lib/server/db'
+import { MIN_USERNAME_LENGTH, MAX_USERNAME_LENGTH } from '$lib/constants/auth'
 
-const plugins = [username(), sveltekitCookies(getRequestEvent)]
+const plugins = [
+	username({
+		minUsernameLength: MIN_USERNAME_LENGTH,
+		maxUsernameLength: MAX_USERNAME_LENGTH,
+		usernameValidator: (username) => /^[a-z0-9._]+$/.test(username),
+		validationOrder: {
+			username: 'post-normalization'
+		}
+	}),
+	sveltekitCookies(getRequestEvent)
+]
 
 type AuthPlugin = (typeof plugins)[number]
 
