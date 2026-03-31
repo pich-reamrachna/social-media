@@ -1,0 +1,164 @@
+<script lang="ts">
+	import { resolve } from '$app/paths'
+	import './SideNav.css'
+
+	type User = {
+		name: string
+		handle: string
+		avatar_url: string
+	}
+
+	type NavPath = '/home' | '/explore' | '/notifications' | '/messages' | '/profile'
+
+	type NavItem = {
+		label: string
+		path: NavPath
+		icon: string
+	}
+
+	const { current_user, active_route } = $props<{
+		current_user: User
+		active_route: string
+	}>()
+
+	const nav_items: NavItem[] = [
+		{
+			label: 'Home',
+			path: '/home',
+			icon: 'M3 12l9-8 9 8v8a2 2 0 01-2 2h-4v-6H9v6H5a2 2 0 01-2-2z'
+		},
+		{
+			label: 'Explore',
+			path: '/explore',
+			icon: 'M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z'
+		},
+		{
+			label: 'Notifications',
+			path: '/notifications',
+			icon: 'M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0h6z'
+		},
+		{
+			label: 'Messages',
+			path: '/messages',
+			icon: 'M8 10h8M8 14h5m-9 6h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z'
+		},
+		{
+			label: 'Profile',
+			path: '/profile',
+			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
+		}
+	]
+
+	const mobile_nav_start: NavItem[] = [
+		{
+			label: 'Home',
+			path: '/home',
+			icon: 'M3 12l9-8 9 8v8a2 2 0 01-2 2h-4v-6H9v6H5a2 2 0 01-2-2z'
+		},
+		{
+			label: 'Explore',
+			path: '/explore',
+			icon: 'M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z'
+		}
+	]
+
+	const mobile_nav_end: NavItem[] = [
+		{
+			label: 'Notifications',
+			path: '/notifications',
+			icon: 'M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0h6z'
+		},
+		{
+			label: 'Profile',
+			path: '/profile',
+			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
+		}
+	]
+</script>
+
+<nav class="side-nav">
+	<div class="side-nav-top">
+		<div class="side-nav-logo">
+			<div class="side-nav-logo-mark">Y</div>
+			<div class="side-nav-logo-sub">The Platform you didn't know existed.</div>
+		</div>
+
+		<div class="side-nav-links">
+			{#each nav_items as item (item.path)}
+				<a
+					href={resolve(item.path)}
+					class="side-nav-item"
+					class:active={active_route === resolve(item.path)}
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="side-nav-icon"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="1.9"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+					</svg>
+					<span>{item.label}</span>
+				</a>
+			{/each}
+		</div>
+
+		<button type="button" class="side-nav-post-btn">Post</button>
+	</div>
+
+	<div class="side-nav-bottom">
+		<div class="side-nav-user">
+			<img src={current_user.avatar_url} alt={current_user.name} class="side-nav-user-avatar" />
+			<div class="side-nav-user-info">
+				<div class="side-nav-user-name">{current_user.name}</div>
+				<div class="side-nav-user-handle">@{current_user.handle}</div>
+			</div>
+		</div>
+	</div>
+</nav>
+
+<nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+	{#each mobile_nav_start as item (item.path)}
+		<a
+			href={resolve(item.path)}
+			class="mobile-nav-item"
+			class:active={active_route === resolve(item.path)}
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="mobile-nav-icon"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="1.9"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+			</svg>
+			<span>{item.label}</span>
+		</a>
+	{/each}
+
+	<button type="button" class="mobile-nav-add" aria-label="Create post">+</button>
+
+	{#each mobile_nav_end as item (item.path)}
+		<a
+			href={resolve(item.path)}
+			class="mobile-nav-item"
+			class:active={active_route === resolve(item.path)}
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="mobile-nav-icon"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="1.9"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+			</svg>
+			<span>{item.label}</span>
+		</a>
+	{/each}
+</nav>
