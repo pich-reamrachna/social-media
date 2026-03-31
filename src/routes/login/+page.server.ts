@@ -9,7 +9,7 @@ const get_string = (formData: FormData, key: string) => {
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
-	if (locals.user) redirect(302, '/')
+	if (locals.user) throw redirect(302, '/home')
 }
 
 export const actions: Actions = {
@@ -34,6 +34,6 @@ export const actions: Actions = {
 			return fail(500, { message: 'Unexpected error', username })
 		}
 
-		redirect(302, '/')
+		return redirect(302, '/home')
 	}
 }

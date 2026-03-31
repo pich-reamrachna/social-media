@@ -25,7 +25,7 @@ const validate_password_strength = (password: string) => {
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
-	if (locals.user) redirect(302, '/')
+	if (locals.user) throw redirect(302, '/home')
 }
 
 export const actions: Actions = {
