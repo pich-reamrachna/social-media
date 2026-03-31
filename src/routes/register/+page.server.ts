@@ -3,6 +3,7 @@ import { fail, redirect } from '@sveltejs/kit'
 import { APIError } from 'better-auth/api'
 import { auth } from '$lib/server/auth'
 import type { Actions, PageServerLoad } from './$types'
+import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
 const get_string = (formData: FormData, key: string) => {
 	const value = formData.get(key)
@@ -12,7 +13,9 @@ const get_string = (formData: FormData, key: string) => {
 const validate_password_strength = (password: string) => {
 	const errors: string[] = []
 
-	if (password.length < 12) errors.push('at least 12 characters')
+	if (password.length < MIN_PASSWORD_LENGTH) {
+		errors.push(`at least ${MIN_PASSWORD_LENGTH} characters`)
+	}
 	if (!/[a-z]/.test(password)) errors.push('one lowercase letter')
 	if (!/[A-Z]/.test(password)) errors.push('one uppercase letter')
 	if (!/\d/.test(password)) errors.push('one number')
