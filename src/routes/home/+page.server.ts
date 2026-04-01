@@ -43,14 +43,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		current_user: {
 			name: user.name,
-			handle: user.username || user.email.split('@')[0],
+			handle: user.username || user.email?.split('@')[0] || 'user',
 			avatar_url: user.image || `https://i.pravatar.cc/150?u=${user.id}`
 		},
 		posts: posts.map((p) => ({
 			id: p.id,
 			author: {
 				name: p.author.name,
-				handle: p.author.username ?? p.author.email.split('@')[0],
+				handle: p.author.username ?? p.author.email?.split('@')[0] ?? 'user',
 				avatar_url: p.author.image || `https://i.pravatar.cc/150?u=${p.author.id}`,
 				is_verified: true, // Placeholder
 				role: '' // Placeholder

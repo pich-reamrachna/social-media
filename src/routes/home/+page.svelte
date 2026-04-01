@@ -5,6 +5,7 @@
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import './home.css'
+	import { deserialize } from '$app/forms'
 
 	import type { PageData } from './$types'
 	const { data }: { data: PageData } = $props()
@@ -43,14 +44,15 @@
 		const form_data = new FormData()
 		form_data.append('postId', post_id)
 
-		console.info('Toggling like for post:', post_id)
-
 		try {
 			const response = await fetch('?/toggleLike', {
 				method: 'POST',
 				body: form_data
 			})
-			if (!response.ok) throw new Error()
+			const result = deserialize(await response.text())
+			if (result.type === 'failure' || result.type === 'error') {
+				throw new Error()
+			}
 
 			// Wait for server state to refresh
 			await invalidateAll()
