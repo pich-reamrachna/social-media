@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
+	import type { ActionData } from './$types'
 
 	let username = $state('')
 	let password = $state('')
 	let should_remember_me = $state(false)
 	let is_show_password = $state(false)
+
+	const { form } = $props<{ form: ActionData }>()
 
 	// toggle show password
 	const toggle_password = () => {
@@ -70,6 +73,14 @@
 			</div>
 
 			<form method="POST" class="space-y-6">
+				{#if form?.message}
+					<p
+						class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+					>
+						{form.message}
+					</p>
+				{/if}
+
 				<div>
 					<label
 						for="username"

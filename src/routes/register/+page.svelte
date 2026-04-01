@@ -1,5 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
+	import { auth_client } from '$lib/auth-client'
+	import type { ActionData } from './$types'
+	import {
+		MIN_USERNAME_LENGTH,
+		MAX_USERNAME_LENGTH,
+		MIN_PASSWORD_LENGTH
+	} from '$lib/constants/auth'
 
 	let email = $state('')
 	let username = $state('')
@@ -8,8 +15,157 @@
 
 	let is_show_password = $state(false)
 
+	let email_status = $state<'idle' | 'invalid' | 'valid'>('idle')
+	let email_message = $state('')
+
+	let username_status = $state<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle')
+	let username_message = $state('')
+	let username_timer: ReturnType<typeof setTimeout> | undefined = undefined
+
+	let password_status = $state<'idle' | 'invalid' | 'valid'>('idle')
+	let password_message = $state('')
+
+	let confirm_password_status = $state<'idle' | 'invalid' | 'valid'>('idle')
+	let confirm_password_message = $state('')
+
+	const { form } = $props<{ form: ActionData }>()
+
+	const check_email = (value: string) => {
+		const trimmed = value.trim()
+
+		if (!trimmed) {
+			email_status = 'idle'
+			email_message = ''
+			return
+		}
+
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+			email_status = 'invalid'
+			email_message = 'Invalid Email'
+			return
+		}
+
+		email_status = 'valid'
+		email_message = ''
+	}
+
+	const check_username = (value: string) => {
+		const trimmed = value.trim()
+		const normalized = trimmed.toLowerCase()
+
+		if (!normalized) {
+			username_status = 'idle'
+			username_message = ''
+			return
+		}
+
+		if (!/^[a-z0-9._]+$/.test(normalized)) {
+			username_status = 'error'
+			username_message = 'Username allow only alphanumeric, dots, and hyphens'
+			return
+		}
+
+		if (username_timer) clearTimeout(username_timer)
+
+		if (!trimmed) {
+			username_status = 'idle'
+			username_message = ''
+			return
+		}
+
+		if (trimmed.length < MIN_USERNAME_LENGTH) {
+			username_status = 'error'
+			username_message = 'Username must be at least 3 characters'
+			return
+		} else if (trimmed.length > MAX_USERNAME_LENGTH) {
+			username_status = 'error'
+			username_message = 'Username must be less than 20 characters'
+		}
+
+		username_status = 'checking'
+		username_message = 'Checking username...'
+
+		username_timer = setTimeout(async () => {
+			const { data, error } = await auth_client.isUsernameAvailable({
+				username: normalized
+			})
+
+			if (error) {
+				username_status = 'error'
+				username_message = 'Could not check username right now'
+				return
+			}
+
+			if (data?.available) {
+				username_status = 'available'
+				username_message = 'Username is available'
+			} else {
+				username_status = 'taken'
+				username_message = 'Username is already taken'
+			}
+		}, 400)
+	}
+
+	const validate_password = (value: string) => {
+		if (!value) {
+			password_status = 'idle'
+			password_message = ''
+			return
+		}
+
+		if (value.length < MIN_PASSWORD_LENGTH) {
+			password_status = 'invalid'
+			password_message = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+			return
+		}
+
+		if (!/[a-z]/.test(password)) {
+			password_status = 'invalid'
+			password_message = 'Password must contain one lowercase letter'
+			return
+		}
+
+		if (!/[A-Z]/.test(password)) {
+			password_status = 'invalid'
+			password_message = 'Password must contain one uppercase letter'
+			return
+		}
+
+		if (!/\d/.test(password)) {
+			password_status = 'invalid'
+			password_message = 'Password must contain one number'
+			return
+		}
+
+		if (!/[^A-Za-z0-9]/.test(password)) {
+			password_status = 'invalid'
+			password_message = 'Password must contain one special character'
+			return
+		}
+
+		password_status = 'valid'
+		password_message = 'Valid Password'
+	}
+
 	const toggle_password = () => {
 		is_show_password = !is_show_password
+	}
+
+	const validate_confirm_password = (value: string) => {
+		if (!value) {
+			confirm_password_status = 'idle'
+			confirm_password_message = ''
+			return
+		}
+
+		if (value !== password) {
+			confirm_password_status = 'invalid'
+			confirm_password_message = 'Password does not match'
+			return
+		}
+
+		confirm_password_status = 'valid'
+		confirm_password_message = 'Password match!'
 	}
 </script>
 
@@ -69,6 +225,14 @@
 			</div>
 
 			<form method="POST" class="space-y-6">
+				{#if form?.message}
+					<p
+						class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+					>
+						{form.message}
+					</p>
+				{/if}
+
 				<div>
 					<label
 						for="email"
@@ -81,10 +245,16 @@
 						id="email"
 						name="email"
 						bind:value={email}
+						oninput={(e) => check_email((e.currentTarget as HTMLInputElement).value)}
 						placeholder="Type your email address"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
 						required
 					/>
+					{#if email_message}
+						<p class:text-red-400={email_status === 'invalid'} class="mt-2 text-sm">
+							{email_message}
+						</p>
+					{/if}
 				</div>
 
 				<div>
@@ -99,10 +269,21 @@
 						id="username"
 						name="username"
 						bind:value={username}
+						oninput={(e) => check_username((e.currentTarget as HTMLInputElement).value)}
 						placeholder="Choose a username"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
 						required
 					/>
+					{#if username_message}
+						<p
+							class:text-gray-400={username_status === 'checking'}
+							class:text-green-400={username_status === 'available'}
+							class:text-red-400={username_status === 'taken' || username_status === 'error'}
+							class="mt-2 text-sm"
+						>
+							{username_message}
+						</p>
+					{/if}
 				</div>
 
 				<div>
@@ -118,10 +299,20 @@
 							id="password"
 							name="password"
 							bind:value={password}
+							oninput={(e) => validate_password((e.currentTarget as HTMLInputElement).value)}
 							placeholder="••••••••••••"
 							class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
 							required
 						/>
+						{#if password_message}
+							<p
+								class:text-red-400={password_status === 'invalid'}
+								class:text-green-400={password_status === 'valid'}
+								class="mt-2 text-sm"
+							>
+								{password_message}
+							</p>
+						{/if}
 						<button
 							type="button"
 							onclick={toggle_password}
@@ -179,10 +370,20 @@
 						id="confirm_password"
 						name="confirm_password"
 						bind:value={confirm_password}
+						oninput={(e) => validate_confirm_password((e.currentTarget as HTMLInputElement).value)}
 						placeholder="••••••••••••"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
 						required
 					/>
+					{#if confirm_password_message}
+						<p
+							class:text-red-400={confirm_password_status === 'invalid'}
+							class:text-green-400={confirm_password_status === 'valid'}
+							class="mt-2 text-sm"
+						>
+							{confirm_password_message}
+						</p>
+					{/if}
 				</div>
 
 				<div class="pt-6">
