@@ -1,44 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
+	import { enhance } from '$app/forms'
+	import { invalidateAll } from '$app/navigation'
 	import SideNav from '$lib/components/SideNav.svelte'
+	import Post from '$lib/components/Post.svelte'
 	import './home.css'
 
-	interface PageData {
-		current_user: {
-			name: string
-			handle: string
-			avatar_url: string
-		}
-		posts: Array<{
-			id: string
-			author: {
-				name: string
-				handle: string
-				avatar_url: string
-				is_verified: boolean
-				role: string
-			}
-			content: string
-			images: string[]
-			timestamp: string
-			stats: {
-				comments: number
-				echo_count: number
-				likes: number
-			}
-		}>
-		trending: Array<{
-			category: string
-			tag: string
-			count: string
-		}>
-		who_to_follow: Array<{
-			name: string
-			handle: string
-			avatar_url: string
-		}>
-	}
-
+	import type { PageData } from './$types'
 	const { data }: { data: PageData } = $props()
 
 	let active_tab = $state<'for-you' | 'following'>('for-you')
@@ -47,8 +15,6 @@
 	let post_draft = $state('')
 	const liked_posts = $state<Record<string, boolean>>({})
 	const like_count_override = $state<Record<string, number>>({})
-	const echoed_posts = $state<Record<string, boolean>>({})
-	const echo_count_override = $state<Record<string, number>>({})
 	const followed_users = $state<Record<string, boolean>>({})
 
 	let is_posting = $state(false)
@@ -63,36 +29,45 @@
 		visible: false
 	})
 
-	function format_count(n: number): string {
-		if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
-		if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K'
-		return String(n)
-	}
+	async function toggle_like(post_id: string) {
+		const post = data.posts.find((p) => p.id === post_id)
+		if (!post) return
 
-	function toggle_like(post_id: string, original_count: number): void {
-		liked_posts[post_id] = !(liked_posts[post_id] ?? false)
-		like_count_override[post_id] = original_count + (liked_posts[post_id] ? 1 : 0)
-	}
+		const is_liked = liked_posts[post_id] ?? post.is_liked_by_user
+		const likes = like_count_override[post_id] ?? post.stats.likes
 
-	function toggle_echo(post_id: string, original_count: number): void {
-		echoed_posts[post_id] = !(echoed_posts[post_id] ?? false)
-		echo_count_override[post_id] = original_count + (echoed_posts[post_id] ? 1 : 0)
+		// Optimistic update
+		liked_posts[post_id] = !is_liked
+		like_count_override[post_id] = !is_liked ? likes + 1 : Math.max(0, likes - 1)
+
+		const form_data = new FormData()
+		form_data.append('postId', post_id)
+
+		console.info('Toggling like for post:', post_id)
+
+		try {
+			const response = await fetch('?/toggleLike', {
+				method: 'POST',
+				body: form_data
+			})
+			if (!response.ok) throw new Error()
+
+			// Wait for server state to refresh
+			await invalidateAll()
+
+			// Clear overrides so we use the fresh data from the server
+			delete liked_posts[post_id]
+			delete like_count_override[post_id]
+		} catch {
+			// Rollback on error
+			liked_posts[post_id] = is_liked
+			like_count_override[post_id] = likes
+			show_toast('error', 'Failed to update like')
+		}
 	}
 
 	function toggle_follow(handle: string): void {
 		followed_users[handle] = !(followed_users[handle] ?? false)
-	}
-
-	function handle_post(e: Event): void {
-		e.preventDefault()
-		if (!post_draft.trim()) return
-		is_posting = true
-		show_toast('loading', 'Posting...')
-		setTimeout(() => {
-			post_draft = ''
-			is_posting = false
-			show_toast('success', 'Post created!')
-		}, 1200)
 	}
 
 	function filter_posts() {
@@ -102,7 +77,7 @@
 			(post) =>
 				post.content.toLowerCase().includes(q) ||
 				post.author.name.toLowerCase().includes(q) ||
-				post.author.handle.toLowerCase().includes(q)
+				(post.author.handle ?? '').toLowerCase().includes(q)
 		)
 	}
 
@@ -275,7 +250,25 @@
 			</section>
 		{/if}
 
-		<form class="composer" onsubmit={handle_post}>
+		<form
+			class="composer"
+			method="POST"
+			action="?/createPost"
+			use:enhance={() => {
+				is_posting = true
+				show_toast('loading', 'Posting...')
+				return async ({ result, update }) => {
+					is_posting = false
+					if (result.type === 'success') {
+						post_draft = ''
+						show_toast('success', 'Post created!')
+					} else {
+						show_toast('error', 'Failed to post')
+					}
+					await update()
+				}
+			}}
+		>
 			<img
 				src={data.current_user.avatar_url}
 				alt={data.current_user.name}
@@ -284,6 +277,7 @@
 			<div class="composer-body">
 				<input
 					type="text"
+					name="content"
 					bind:value={post_draft}
 					placeholder="What's happening?"
 					class="composer-input"
@@ -348,149 +342,15 @@
 
 		<!-- Posts -->
 		{#each filter_posts() as post (post.id)}
-			<article class="post-card">
-				<div class="post-header">
-					<img src={post.author.avatar_url} alt={post.author.name} class="post-avatar" />
-					<div class="post-author-info">
-						<div class="post-author-top">
-							<span class="post-author-name">{post.author.name}</span>
-							{#if post.author.is_verified}
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="verified-icon"
-									viewBox="0 0 20 20"
-									fill="currentColor"
-								>
-									<path
-										fill-rule="evenodd"
-										d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-										clip-rule="evenodd"
-									/>
-								</svg>
-							{/if}
-							<span class="post-author-handle">@{post.author.handle}</span>
-							<span class="post-dot">·</span>
-							<span class="post-timestamp">{post.timestamp}</span>
-						</div>
-						{#if post.author.role}
-							<span class="post-author-role">{post.author.role}</span>
-						{/if}
-					</div>
-					<button class="more-btn" aria-label="More options">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="more-icon"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"
-							/>
-						</svg>
-					</button>
-				</div>
-
-				<p class="post-content">{post.content}</p>
-
-				{#if post.images.length === 1}
-					<div class="post-images-single">
-						<img src={post.images[0]} alt="Post media" class="post-image-single" />
-					</div>
-				{:else if post.images.length > 1}
-					<div class="post-images-grid">
-						{#each post.images as src (src)}
-							<img {src} alt="Post media" class="post-image-grid" />
-						{/each}
-					</div>
-				{/if}
-
-				<div class="post-actions">
-					<button class="action-btn" aria-label="Comment">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="action-icon"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-							/>
-						</svg>
-						<span>{format_count(post.stats.comments)}</span>
-					</button>
-
-					<button
-						class="action-btn"
-						class:action-echo-active={echoed_posts[post.id] ?? false}
-						aria-label="Echo"
-						onclick={() => toggle_echo(post.id, post.stats.echo_count)}
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="action-icon"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-							/>
-						</svg>
-						<span>{format_count(echo_count_override[post.id] ?? post.stats.echo_count)}</span>
-					</button>
-
-					<button
-						class="action-btn"
-						class:action-like-active={liked_posts[post.id] ?? false}
-						aria-label="Like"
-						onclick={() => toggle_like(post.id, post.stats.likes)}
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="action-icon"
-							fill={(liked_posts[post.id] ?? false) ? 'currentColor' : 'none'}
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-							/>
-						</svg>
-						<span>{format_count(like_count_override[post.id] ?? post.stats.likes)}</span>
-					</button>
-
-					<button class="action-btn action-share" aria-label="Share">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="action-icon"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"
-							/>
-						</svg>
-					</button>
-				</div>
-			</article>
+			<Post
+				name={post.author.name}
+				handle={post.author.handle ?? ''}
+				content={post.content}
+				timestamp={post.timestamp}
+				likes={like_count_override[post.id] ?? post.stats.likes}
+				is_liked={liked_posts[post.id] ?? post.is_liked_by_user}
+				on_like={() => toggle_like(post.id)}
+			/>
 		{/each}
 	</main>
 
