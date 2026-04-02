@@ -26,7 +26,7 @@ description: Best practices for using `pnpm` in this project. Use when installin
 
 ## Filter & Workspace
 
-If this project has多个 packages (workspace), use `--filter`:
+If this project has many packages (workspace), use `--filter`:
 
 - `pnpm --filter ./apps/web dev`
 

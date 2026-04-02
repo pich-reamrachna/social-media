@@ -89,9 +89,11 @@ export const actions: Actions = {
 			return fail(400, { message: 'Post is too long' })
 		}
 
+		const trimmed_content = content.trim()
+
 		try {
 			await db.insert(post).values({
-				content,
+				content: trimmed_content,
 				userId: user.id
 			})
 		} catch (error) {
