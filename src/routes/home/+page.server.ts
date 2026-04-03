@@ -1,9 +1,69 @@
 import { db } from '$lib/server/db'
+import { cloudinary } from '$lib/server/cloudinary'
 import { post } from '$lib/server/db/post'
 import { like } from '$lib/server/db/interactions'
 import { fail, redirect } from '@sveltejs/kit'
 import { desc, and, eq } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
+
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+
+const get_post_payload = (form_data: FormData) => {
+	const content = form_data.get('content') as string
+	const image = form_data.get('image')
+
+	if (content && content.length > 280) {
+		return { error: { status: 400, message: 'Post is too long' } }
+	}
+
+	const trimmed_content = content?.trim() ?? ''
+	const image_file = image instanceof File && image.size > 0 ? image : undefined
+
+	if (!trimmed_content && !image_file) {
+		return { error: { status: 400, message: 'Post must include text or an image' } }
+	}
+
+	if (image_file && !image_file.type.startsWith('image/')) {
+		return { error: { status: 400, message: 'Only image uploads are supported' } }
+	}
+
+	if (image_file && image_file.size > MAX_IMAGE_SIZE_BYTES) {
+		return { error: { status: 400, message: 'Image must be smaller than 5MB' } }
+	}
+
+	return {
+		trimmed_content,
+		image_file
+	}
+}
+
+const upload_post_image = async (file: File) => {
+	const bytes = await file.arrayBuffer()
+	const buffer = Buffer.from(bytes)
+
+	return new Promise<string>((resolve, reject) => {
+		const stream = cloudinary.uploader.upload_stream(
+			{
+				folder: 'social-media/posts',
+				resource_type: 'image'
+			},
+			(error, result) => {
+				if (error || !result?.secure_url) {
+					reject(error ?? new Error('Cloudinary upload failed'))
+					return
+				}
+
+				resolve(result.secure_url)
+			}
+		)
+
+		stream.end(buffer)
+	})
+}
+
+const get_post_image_url = async (file: File | undefined) => {
+	return file ? upload_post_image(file) : undefined
+}
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const user = locals.user
@@ -56,7 +116,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				role: '' // Placeholder
 			},
 			content: p.content,
-			images: [],
+			images: p.imageUrl ? [p.imageUrl] : [],
 			timestamp: p.createdAt,
 			is_liked_by_user: p.likes.some((l) => l.userId === user.id),
 			stats: {
@@ -79,21 +139,17 @@ export const actions: Actions = {
 		}
 
 		const form_data = await request.formData()
-		const content = form_data.get('content') as string
-
-		if (!content || content.trim().length === 0) {
-			return fail(400, { message: 'Post cannot be empty' })
+		const payload = get_post_payload(form_data)
+		if ('error' in payload) {
+			return fail(payload.error.status, { message: payload.error.message })
 		}
-
-		if (content.length > 280) {
-			return fail(400, { message: 'Post is too long' })
-		}
-
-		const trimmed_content = content.trim()
 
 		try {
+			const image_url = await get_post_image_url(payload.image_file)
+
 			await db.insert(post).values({
-				content: trimmed_content,
+				content: payload.trimmed_content,
+				imageUrl: image_url,
 				userId: user.id
 			})
 		} catch (error) {
