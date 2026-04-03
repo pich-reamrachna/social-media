@@ -7,16 +7,17 @@ import { desc, and, eq } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+const UPLOAD_TIMEOUT_MS = 30_000
 
 const get_post_payload = (form_data: FormData) => {
-	const content = form_data.get('content') as string
+	const content = form_data.get('content')
 	const image = form_data.get('image')
+	const trimmed_content = typeof content === 'string' ? content.trim() : ''
 
-	if (content && content.length > 280) {
+	if (trimmed_content.length > 280) {
 		return { error: { status: 400, message: 'Post is too long' } }
 	}
 
-	const trimmed_content = content?.trim() ?? ''
 	const image_file = image instanceof File && image.size > 0 ? image : undefined
 
 	if (!trimmed_content && !image_file) {
@@ -42,12 +43,18 @@ const upload_post_image = async (file: File) => {
 	const buffer = Buffer.from(bytes)
 
 	return new Promise<string>((resolve, reject) => {
+		const timeout = setTimeout(() => {
+			reject(new Error('Image upload timed out'))
+		}, UPLOAD_TIMEOUT_MS)
+
 		const stream = cloudinary.uploader.upload_stream(
 			{
 				folder: 'social-media/posts',
-				resource_type: 'image'
+				resource_type: 'image',
+				timeout: UPLOAD_TIMEOUT_MS
 			},
 			(error, result) => {
+				clearTimeout(timeout)
 				if (error || !result?.secure_url) {
 					reject(error ?? new Error('Cloudinary upload failed'))
 					return
