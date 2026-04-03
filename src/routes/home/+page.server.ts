@@ -8,6 +8,11 @@ import type { PageServerLoad, Actions } from './$types'
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 const UPLOAD_TIMEOUT_MS = 30_000
 
+type UploadedPostImage = {
+	url: string
+	public_id: string
+}
+
 const get_post_payload = (form_data: FormData) => {
 	const content = form_data.get('content')
 	const image = form_data.get('image')
@@ -42,7 +47,7 @@ const upload_post_image = async (file: File) => {
 	const bytes = await file.arrayBuffer()
 	const buffer = Buffer.from(bytes)
 
-	return new Promise<string>((resolve, reject) => {
+	return new Promise<UploadedPostImage>((resolve, reject) => {
 		const timeout = setTimeout(() => {
 			reject(new Error('Image upload timed out'))
 		}, UPLOAD_TIMEOUT_MS)
@@ -55,12 +60,15 @@ const upload_post_image = async (file: File) => {
 			},
 			(error, result) => {
 				clearTimeout(timeout)
-				if (error || !result?.secure_url) {
+				if (error || !result?.secure_url || !result.public_id) {
 					reject(error ?? new Error('Cloudinary upload failed'))
 					return
 				}
 
-				resolve(result.secure_url)
+				resolve({
+					url: result.secure_url,
+					public_id: result.public_id
+				})
 			}
 		)
 
@@ -70,6 +78,17 @@ const upload_post_image = async (file: File) => {
 
 const get_post_image_url = async (file: File | undefined) => {
 	return file ? upload_post_image(file) : undefined
+}
+
+const delete_uploaded_post_image = async (public_id: string | undefined) => {
+	if (!public_id) return
+
+	try {
+		const { cloudinary } = await import('$lib/server/cloudinary')
+		await cloudinary.uploader.destroy(public_id)
+	} catch (cleanup_error) {
+		console.error('Failed to clean up uploaded post image:', cleanup_error)
+	}
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -151,15 +170,18 @@ export const actions: Actions = {
 			return fail(payload.error.status, { message: payload.error.message })
 		}
 
+		let uploaded_image: Awaited<ReturnType<typeof get_post_image_url>>
+
 		try {
-			const image_url = await get_post_image_url(payload.image_file)
+			uploaded_image = await get_post_image_url(payload.image_file)
 
 			await db.insert(post).values({
 				content: payload.trimmed_content,
-				imageUrl: image_url,
+				imageUrl: uploaded_image?.url,
 				userId: user.id
 			})
 		} catch (error) {
+			await delete_uploaded_post_image(uploaded_image?.public_id)
 			console.error('Failed to create post:', error)
 			return fail(500, { message: 'Internal server error' })
 		}
