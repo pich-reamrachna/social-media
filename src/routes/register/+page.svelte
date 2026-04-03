@@ -60,7 +60,7 @@
 
 		if (!/^[A-Za-z0-9._]+$/.test(trimmed)) {
 			username_status = 'error'
-			username_message = 'Username allow only alphanumeric, dots, and hyphens'
+			username_message = 'Username allow only alphanumeric, dots, and underscores'
 			return
 		}
 
