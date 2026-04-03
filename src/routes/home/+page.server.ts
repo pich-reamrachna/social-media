@@ -1,5 +1,4 @@
 import { db } from '$lib/server/db'
-import { cloudinary } from '$lib/server/cloudinary'
 import { post } from '$lib/server/db/post'
 import { like } from '$lib/server/db/interactions'
 import { fail, redirect } from '@sveltejs/kit'
@@ -39,6 +38,7 @@ const get_post_payload = (form_data: FormData) => {
 }
 
 const upload_post_image = async (file: File) => {
+	const { cloudinary } = await import('$lib/server/cloudinary')
 	const bytes = await file.arrayBuffer()
 	const buffer = Buffer.from(bytes)
 
