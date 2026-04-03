@@ -8,11 +8,9 @@
 		avatar_url: string
 	}
 
-	type NavPath = '/home' | '/explore' | '/notifications' | '/messages' | '/profile'
-
 	type NavItem = {
 		label: string
-		path: NavPath
+		path: string // Changed from NavPath to string to allow dynamic handles
 		icon: string
 	}
 
@@ -21,6 +19,7 @@
 		active_route: string
 	}>()
 
+	// 1. Updated the paths to use the specific user's handle
 	const nav_items: NavItem[] = [
 		{
 			label: 'Home',
@@ -44,7 +43,7 @@
 		},
 		{
 			label: 'Profile',
-			path: '/profile',
+			path: `/profile/${current_user.handle}`, // Dynamic Path
 			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
 		}
 	]
@@ -70,7 +69,7 @@
 		},
 		{
 			label: 'Profile',
-			path: '/profile',
+			path: `/profile/${current_user.handle}`, // Dynamic Path
 			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
 		}
 	]
@@ -109,13 +108,16 @@
 	</div>
 
 	<div class="side-nav-bottom">
-		<div class="side-nav-user">
+		<a
+			href={resolve(`/profile/${current_user.handle}`)}
+			class="side-nav-user flex w-full items-center rounded-full p-3 text-inherit no-underline transition-colors hover:bg-white/5"
+		>
 			<img src={current_user.avatar_url} alt={current_user.name} class="side-nav-user-avatar" />
 			<div class="side-nav-user-info">
 				<div class="side-nav-user-name">{current_user.name}</div>
 				<div class="side-nav-user-handle">@{current_user.handle}</div>
 			</div>
-		</div>
+		</a>
 	</div>
 </nav>
 

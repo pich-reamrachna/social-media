@@ -137,9 +137,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			author: {
 				name: p.author.name,
 				handle: p.author.username ?? p.author.email?.split('@')[0] ?? 'user',
-				avatar_url: p.author.image || `https://i.pravatar.cc/150?u=${p.author.id}`,
-				is_verified: true, // Placeholder
-				role: '' // Placeholder
+				avatar_url: p.author.image || `https://i.pravatar.cc/150?u=${p.author.id}`
 			},
 			content: p.content,
 			images: p.imageUrl ? [p.imageUrl] : [],
