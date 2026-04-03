@@ -3,6 +3,7 @@
 		name,
 		handle,
 		content,
+		images = [],
 		likes,
 		timestamp,
 		is_liked = false,
@@ -11,6 +12,7 @@
 		name: string
 		handle: string
 		content: string
+		images?: string[]
 		likes: number
 		timestamp: string | Date
 		is_liked?: boolean
@@ -49,6 +51,12 @@
 	</div>
 
 	<p class="post-content">{content}</p>
+
+	{#if images.length === 1}
+		<div class="post-images-single">
+			<img src={images[0]} alt="Post attachment" class="post-image-single" loading="lazy" />
+		</div>
+	{/if}
 
 	<div class="post-actions">
 		<button class="action-btn" aria-label="Comment">

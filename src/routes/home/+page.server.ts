@@ -5,6 +5,92 @@ import { fail, redirect } from '@sveltejs/kit'
 import { desc, and, eq } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
 
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+const UPLOAD_TIMEOUT_MS = 30_000
+
+type UploadedPostImage = {
+	url: string
+	public_id: string
+}
+
+const get_post_payload = (form_data: FormData) => {
+	const content = form_data.get('content')
+	const image = form_data.get('image')
+	const trimmed_content = typeof content === 'string' ? content.trim() : ''
+
+	if (trimmed_content.length > 280) {
+		return { error: { status: 400, message: 'Post is too long' } }
+	}
+
+	const image_file = image instanceof File && image.size > 0 ? image : undefined
+
+	if (!trimmed_content && !image_file) {
+		return { error: { status: 400, message: 'Post must include text or an image' } }
+	}
+
+	if (image_file && !image_file.type.startsWith('image/')) {
+		return { error: { status: 400, message: 'Only image uploads are supported' } }
+	}
+
+	if (image_file && image_file.size > MAX_IMAGE_SIZE_BYTES) {
+		return { error: { status: 400, message: 'Image must be smaller than 5MB' } }
+	}
+
+	return {
+		trimmed_content,
+		image_file
+	}
+}
+
+const upload_post_image = async (file: File) => {
+	const { cloudinary } = await import('$lib/server/cloudinary')
+	const bytes = await file.arrayBuffer()
+	const buffer = Buffer.from(bytes)
+
+	return new Promise<UploadedPostImage>((resolve, reject) => {
+		const timeout = setTimeout(() => {
+			reject(new Error('Image upload timed out'))
+		}, UPLOAD_TIMEOUT_MS)
+
+		const stream = cloudinary.uploader.upload_stream(
+			{
+				folder: 'social-media/posts',
+				resource_type: 'image',
+				timeout: UPLOAD_TIMEOUT_MS
+			},
+			(error, result) => {
+				clearTimeout(timeout)
+				if (error || !result?.secure_url || !result.public_id) {
+					reject(error ?? new Error('Cloudinary upload failed'))
+					return
+				}
+
+				resolve({
+					url: result.secure_url,
+					public_id: result.public_id
+				})
+			}
+		)
+
+		stream.end(buffer)
+	})
+}
+
+const get_post_image_url = async (file: File | undefined) => {
+	return file ? upload_post_image(file) : undefined
+}
+
+const delete_uploaded_post_image = async (public_id: string | undefined) => {
+	if (!public_id) return
+
+	try {
+		const { cloudinary } = await import('$lib/server/cloudinary')
+		await cloudinary.uploader.destroy(public_id)
+	} catch (cleanup_error) {
+		console.error('Failed to clean up uploaded post image:', cleanup_error)
+	}
+}
+
 export const load: PageServerLoad = async ({ locals }) => {
 	const user = locals.user
 	if (!user) {
@@ -56,7 +142,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				role: '' // Placeholder
 			},
 			content: p.content,
-			images: [],
+			images: p.imageUrl ? [p.imageUrl] : [],
 			timestamp: p.createdAt,
 			is_liked_by_user: p.likes.some((l) => l.userId === user.id),
 			stats: {
@@ -79,24 +165,23 @@ export const actions: Actions = {
 		}
 
 		const form_data = await request.formData()
-		const content = form_data.get('content') as string
-
-		if (!content || content.trim().length === 0) {
-			return fail(400, { message: 'Post cannot be empty' })
+		const payload = get_post_payload(form_data)
+		if ('error' in payload) {
+			return fail(payload.error.status, { message: payload.error.message })
 		}
 
-		if (content.length > 280) {
-			return fail(400, { message: 'Post is too long' })
-		}
-
-		const trimmed_content = content.trim()
+		let uploaded_image: Awaited<ReturnType<typeof get_post_image_url>>
 
 		try {
+			uploaded_image = await get_post_image_url(payload.image_file)
+
 			await db.insert(post).values({
-				content: trimmed_content,
+				content: payload.trimmed_content,
+				imageUrl: uploaded_image?.url,
 				userId: user.id
 			})
 		} catch (error) {
+			await delete_uploaded_post_image(uploaded_image?.public_id)
 			console.error('Failed to create post:', error)
 			return fail(500, { message: 'Internal server error' })
 		}
