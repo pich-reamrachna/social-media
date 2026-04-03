@@ -5,6 +5,12 @@
 	"engines": {
 		"node": "22.x"
 	},
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"onFail": "error"
+		}
+	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
 			"esbuild",
@@ -28,6 +34,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build && pnpm run prepack",
+		"preinstall": "pnpm dlx @aikidosec/safe-chain setup-ci",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''; pnpm exec lefthook install",
 		"prepack": "svelte-kit sync && svelte-package && publint",
