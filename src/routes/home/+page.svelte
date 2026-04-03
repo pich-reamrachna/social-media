@@ -14,6 +14,9 @@
 	let search_query = $state('')
 	let is_settings_open = $state(false)
 	let post_draft = $state('')
+	let composer_form: HTMLFormElement | undefined = $state(undefined)
+	let selected_image_name = $state('')
+	let selected_image_preview = $state<string | undefined>(undefined)
 	const liked_posts = $state<Record<string, boolean>>({})
 	const like_count_override = $state<Record<string, number>>({})
 	const followed_users = $state<Record<string, boolean>>({})
@@ -102,6 +105,38 @@
 			show_toast('success', 'Feed refreshed!')
 			is_error_banner_visible = false
 		}, 1500)
+	}
+
+	function handle_image_change(event: Event) {
+		const input = event.currentTarget as HTMLInputElement
+		const file = input.files?.[0]
+
+		if (!file) {
+			selected_image_name = ''
+			selected_image_preview = undefined
+			return
+		}
+
+		if (selected_image_preview) {
+			URL.revokeObjectURL(selected_image_preview)
+		}
+
+		selected_image_name = file.name
+		selected_image_preview = URL.createObjectURL(file)
+	}
+
+	function clear_selected_image(form?: HTMLFormElement) {
+		if (selected_image_preview) {
+			URL.revokeObjectURL(selected_image_preview)
+		}
+
+		selected_image_name = ''
+		selected_image_preview = undefined
+
+		const image_input = form?.querySelector<HTMLInputElement>('input[name="image"]')
+		if (image_input) {
+			image_input.value = ''
+		}
 	}
 </script>
 
@@ -253,16 +288,20 @@
 		{/if}
 
 		<form
+			bind:this={composer_form}
+			// direct access to this specific form element
 			class="composer"
 			method="POST"
+			enctype="multipart/form-data"
 			action="?/createPost"
-			use:enhance={() => {
+			use:enhance={({ formElement }) => {
 				is_posting = true
 				show_toast('loading', 'Posting...')
 				return async ({ result, update }) => {
 					is_posting = false
 					if (result.type === 'success') {
 						post_draft = ''
+						clear_selected_image(formElement)
 						show_toast('success', 'Post created!')
 					} else {
 						show_toast('error', 'Failed to post')
@@ -284,9 +323,32 @@
 					placeholder="What's happening?"
 					class="composer-input"
 				/>
+				<input
+					id="composer-image"
+					type="file"
+					name="image"
+					accept="image/*"
+					class="composer-file-input"
+					onchange={handle_image_change}
+				/>
+				{#if selected_image_preview}
+					<div class="composer-image-preview">
+						<img src={selected_image_preview} alt="Selected attachment preview" />
+						<div class="composer-image-meta">
+							<span>{selected_image_name}</span>
+							<button
+								type="button"
+								class="composer-image-remove"
+								onclick={() => clear_selected_image(composer_form ?? undefined)}
+							>
+								Remove
+							</button>
+						</div>
+					</div>
+				{/if}
 				<div class="composer-actions">
 					<div class="composer-media-btns">
-						<button type="button" class="media-btn" aria-label="Add image">
+						<label for="composer-image" class="media-btn" aria-label="Add image">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								class="media-icon"
@@ -301,7 +363,7 @@
 									d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
 								/>
 							</svg>
-						</button>
+						</label>
 						<button type="button" class="media-btn" aria-label="Add poll">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -335,7 +397,11 @@
 							</svg>
 						</button>
 					</div>
-					<button type="submit" class="submit-post-btn" disabled={!post_draft.trim() || is_posting}>
+					<button
+						type="submit"
+						class="submit-post-btn"
+						disabled={(!post_draft.trim() && !selected_image_preview) || is_posting}
+					>
 						{is_posting ? 'Posting...' : 'Post'}
 					</button>
 				</div>
@@ -348,6 +414,7 @@
 				name={post.author.name}
 				handle={post.author.handle ?? ''}
 				content={post.content}
+				images={post.images}
 				timestamp={post.timestamp}
 				likes={like_count_override[post.id] ?? post.stats.likes}
 				is_liked={liked_posts[post.id] ?? post.is_liked_by_user}
