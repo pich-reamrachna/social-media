@@ -51,15 +51,14 @@
 
 	const check_username = (value: string) => {
 		const trimmed = value.trim()
-		const normalized = trimmed.toLowerCase()
 
-		if (!normalized) {
+		if (!trimmed) {
 			username_status = 'idle'
 			username_message = ''
 			return
 		}
 
-		if (!/^[a-z0-9._]+$/.test(normalized)) {
+		if (!/^[A-Za-z0-9._]+$/.test(trimmed)) {
 			username_status = 'error'
 			username_message = 'Username allow only alphanumeric, dots, and hyphens'
 			return
@@ -87,7 +86,7 @@
 
 		username_timer = setTimeout(async () => {
 			const { data, error } = await auth_client.isUsernameAvailable({
-				username: normalized
+				username: trimmed
 			})
 
 			if (error) {
