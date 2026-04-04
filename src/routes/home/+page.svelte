@@ -4,11 +4,13 @@
 	import { invalidateAll } from '$app/navigation'
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
+	import RightSidebar from '$lib/components/RightSidebar.svelte'
 	import './home.css'
 	import { deserialize } from '$app/forms'
 
 	import type { PageData } from './$types'
 	const { data }: { data: PageData } = $props()
+	type FeedPost = PageData['posts'][number]
 
 	let active_tab = $state<'for-you' | 'following'>('for-you')
 	let search_query = $state('')
@@ -34,7 +36,7 @@
 	})
 
 	async function toggle_like(post_id: string) {
-		const post = data.posts.find((p) => p.id === post_id)
+		const post = data.posts.find((p: FeedPost) => p.id === post_id)
 		if (!post) return
 
 		const is_liked = liked_posts[post_id] ?? post.is_liked_by_user
@@ -79,7 +81,7 @@
 		const q = search_query.toLowerCase().trim()
 		if (!q) return data.posts
 		return data.posts.filter(
-			(post) =>
+			(post: FeedPost) =>
 				post.content.toLowerCase().includes(q) ||
 				post.author.name.toLowerCase().includes(q) ||
 				(post.author.handle ?? '').toLowerCase().includes(q)
@@ -189,9 +191,14 @@
 		</div>
 	{/if}
 
-	<SideNav current_user={data.current_user} active_route={resolve('/home')} />
+	<SideNav
+		current_user={data.current_user}
+		active_route={resolve('/home')}
+		{is_settings_open}
+		on_settings_toggle={() => (is_settings_open = !is_settings_open)}
+	/>
 
-	<main class="feed-column">
+	<section class="mobile-prelude" aria-label="Top feed section">
 		<div class="mobile-header">
 			<span class="mobile-logo">Y</span>
 			<img src={data.current_user.avatar_url} alt={data.current_user.name} class="mobile-avatar" />
@@ -201,7 +208,9 @@
 			<span class="breaking-label">BREAKING</span>
 			<span class="breaking-text">Global markets react to new decentralization policies</span>
 		</div>
+	</section>
 
+	<main class="feed-column">
 		<div class="feed-topbar">
 			<div class="feed-tabs">
 				<button
@@ -217,59 +226,6 @@
 					onclick={() => (active_tab = 'following')}
 				>
 					Following
-				</button>
-			</div>
-
-			<div class="feed-controls">
-				<div class="search-group">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="search-icon"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-						/>
-					</svg>
-					<input
-						type="search"
-						value={search_query}
-						oninput={(e) => (search_query = (e.target as HTMLInputElement).value)}
-						placeholder="Search"
-						class="search-input"
-					/>
-				</div>
-
-				<button
-					type="button"
-					class="settings-btn"
-					aria-label="Settings"
-					onclick={() => (is_settings_open = !is_settings_open)}
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="settings-icon"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-						/>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-						/>
-					</svg>
 				</button>
 			</div>
 		</div>
@@ -364,38 +320,6 @@
 								/>
 							</svg>
 						</label>
-						<button type="button" class="media-btn" aria-label="Add poll">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="media-icon"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								stroke-width="2"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-								/>
-							</svg>
-						</button>
-						<button type="button" class="media-btn" aria-label="Add emoji">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="media-icon"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								stroke-width="2"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-								/>
-							</svg>
-						</button>
 					</div>
 					<button
 						type="submit"
@@ -408,7 +332,32 @@
 			</div>
 		</form>
 
-		<!-- Posts -->
+		<div class="desktop-posts">
+			{#each filter_posts() as post (post.id)}
+				<Post
+					name={post.author.name}
+					handle={post.author.handle ?? ''}
+					content={post.content}
+					images={post.images}
+					timestamp={post.timestamp}
+					likes={like_count_override[post.id] ?? post.stats.likes}
+					is_liked={liked_posts[post.id] ?? post.is_liked_by_user}
+					on_like={() => toggle_like(post.id)}
+				/>
+			{/each}
+		</div>
+	</main>
+
+	<RightSidebar
+		trending={data.trending}
+		who_to_follow={data.who_to_follow}
+		{search_query}
+		{followed_users}
+		on_search_change={(value) => (search_query = value)}
+		on_toggle_follow={toggle_follow}
+	/>
+
+	<section class="posts-column">
 		{#each filter_posts() as post (post.id)}
 			<Post
 				name={post.author.name}
@@ -421,53 +370,12 @@
 				on_like={() => toggle_like(post.id)}
 			/>
 		{/each}
-	</main>
+	</section>
 
-	<!-- RIGHT SIDEBAR -->
-	<aside class="right-sidebar">
-		<div class="sidebar-card">
-			<h3 class="sidebar-card-title">Trending Now</h3>
-			<ul class="trending-list">
-				{#each data.trending as trend (trend.tag)}
-					<li class="trending-item">
-						<span class="trending-category">{trend.category}</span>
-						<span class="trending-tag">{trend.tag}</span>
-						<span class="trending-count">{trend.count} Echoes</span>
-					</li>
-				{/each}
-			</ul>
-			<button class="show-more-btn">Show more</button>
-		</div>
-
-		<div class="sidebar-card">
-			<h3 class="sidebar-card-title">Who to Follow</h3>
-			<ul class="follow-list">
-				{#each data.who_to_follow as user (user.handle)}
-					{@const is_following = followed_users[user.handle] ?? false}
-					<li class="follow-item">
-						<img src={user.avatar_url} alt={user.name} class="follow-avatar" />
-						<div class="follow-info">
-							<span class="follow-name">{user.name}</span>
-							<span class="follow-handle">@{user.handle}</span>
-						</div>
-						<button
-							class="follow-btn"
-							class:follow-btn-active={is_following}
-							onclick={() => toggle_follow(user.handle)}
-						>
-							{is_following ? 'Following' : 'Follow'}
-						</button>
-					</li>
-				{/each}
-			</ul>
-			<button class="show-more-btn">Show more</button>
-		</div>
-
-		<footer class="sidebar-footer">
-			<a href={resolve('/terms')}>Terms of Service</a>
-			<a href={resolve('/privacy')}>Privacy Policy</a>
-			<a href={resolve('/cookies')}>Cookie Policy</a>
-			<span>© 2026 Y.</span>
-		</footer>
-	</aside>
+	<footer class="mobile-legal-footer">
+		<a href={resolve('/terms')}>Terms of Service</a>
+		<a href={resolve('/privacy')}>Privacy Policy</a>
+		<a href={resolve('/cookies')}>Cookie Policy</a>
+		<span>© 2026 Y.</span>
+	</footer>
 </div>
