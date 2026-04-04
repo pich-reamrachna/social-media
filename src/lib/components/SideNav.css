@@ -90,32 +90,6 @@
 	flex-shrink: 0;
 }
 
-.side-nav-post-btn {
-	width: 100%;
-	margin-top: 1.5rem;
-	padding: 0.875rem 1.5rem;
-	border: none;
-	border-radius: 9999px;
-	background: linear-gradient(to right, #ff3377, #ff7eb3);
-	color: #fff;
-	font-size: 0.95rem;
-	font-weight: 700;
-	cursor: pointer;
-	box-shadow: 0 0 20px rgba(255, 51, 119, 0.3);
-	transition:
-		transform 0.15s,
-		box-shadow 0.15s;
-}
-
-.side-nav-post-btn:hover {
-	transform: scale(1.01);
-	box-shadow: 0 0 25px rgba(255, 51, 119, 0.5);
-}
-
-.side-nav-post-btn:active {
-	transform: scale(0.99);
-}
-
 .side-nav-user {
 	display: flex;
 	align-items: center;
@@ -125,6 +99,40 @@
 	margin-top: auto;
 	cursor: pointer;
 	transition: background-color 0.15s;
+}
+
+.side-nav-settings-btn {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	width: 100%;
+	padding: 0.75rem;
+	margin-bottom: 0.5rem;
+	border: 1px solid #1f1f1f;
+	border-radius: 9999px;
+	background-color: #111111;
+	color: #9ca3af;
+	font-size: 0.9rem;
+	font-weight: 600;
+	font-family: inherit;
+	cursor: pointer;
+	transition:
+		color 0.15s,
+		background-color 0.15s,
+		border-color 0.15s;
+}
+
+.side-nav-settings-btn:hover,
+.side-nav-settings-btn.active {
+	color: #f3f4f6;
+	border-color: #374151;
+	background-color: #151515;
+}
+
+.side-nav-settings-icon {
+	width: 1.1rem;
+	height: 1.1rem;
+	flex-shrink: 0;
 }
 
 .side-nav-user:hover {
@@ -173,6 +181,7 @@
 
 	.side-nav-logo-sub,
 	.side-nav-item span,
+	.side-nav-settings-btn span,
 	.side-nav-user-info {
 		display: none;
 	}
@@ -192,23 +201,12 @@
 		padding: 0.75rem;
 	}
 
-	.side-nav-post-btn {
+	.side-nav-settings-btn {
 		width: 2.75rem;
 		height: 2.75rem;
 		padding: 0;
-		font-size: 0;
-		border-radius: 9999px;
-		display: flex;
-		align-items: center;
 		justify-content: center;
-	}
-
-	.side-nav-post-btn::after {
-		content: '+';
-		font-size: 1.75rem;
-		font-weight: 300;
-		color: #fff;
-		line-height: 1;
+		margin-bottom: 0.5rem;
 	}
 }
 
@@ -272,29 +270,5 @@
 	.mobile-nav-icon {
 		width: 1.25rem;
 		height: 1.25rem;
-	}
-
-	.mobile-nav-add {
-		width: 3rem;
-		height: 3rem;
-		border-radius: 9999px;
-		background: linear-gradient(135deg, #ff3377, #ff7eb3);
-		color: #fff;
-		font-size: 1.5rem;
-		font-weight: 300;
-		border: none;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		box-shadow: 0 0 16px rgba(255, 51, 119, 0.45);
-		transition:
-			transform 0.15s,
-			box-shadow 0.15s;
-	}
-
-	.mobile-nav-add:hover {
-		transform: translateY(-1px) scale(1.03);
-		box-shadow: 0 0 22px rgba(255, 51, 119, 0.6);
 	}
 }
