@@ -2,9 +2,9 @@ import { db } from '$lib/server/db'
 import { user } from '$lib/server/db/auth.schema'
 import { post } from '$lib/server/db/post'
 import { like } from '$lib/server/db/interactions'
-import { error } from '@sveltejs/kit'
-import { desc, eq } from 'drizzle-orm'
-import type { PageServerLoad } from './$types'
+import { error, fail } from '@sveltejs/kit'
+import { and, desc, eq } from 'drizzle-orm'
+import type { Actions, PageServerLoad } from './$types'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const viewer = locals.user
@@ -113,5 +113,37 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		liked_posts: liked_posts.map(map_post_for_frontend),
 		trending,
 		who_to_follow
+	}
+}
+
+export const actions: Actions = {
+	toggleLike: async ({ request, locals }) => {
+		const viewer = locals.user
+		if (!viewer) {
+			return fail(401, { message: 'Unauthorized' })
+		}
+
+		const form_data = await request.formData()
+		const post_id = form_data.get('postId')
+
+		if (typeof post_id !== 'string' || !post_id) {
+			return fail(400, { message: 'Invalid post id' })
+		}
+
+		try {
+			const existing_like = await db.query.like.findFirst({
+				where: and(eq(like.postId, post_id), eq(like.userId, viewer.id))
+			})
+
+			if (existing_like) {
+				await db.delete(like).where(and(eq(like.postId, post_id), eq(like.userId, viewer.id)))
+			} else {
+				await db.insert(like).values({ userId: viewer.id, postId: post_id })
+			}
+		} catch {
+			return fail(500, { message: 'Failed to update like' })
+		}
+
+		return { success: true }
 	}
 }

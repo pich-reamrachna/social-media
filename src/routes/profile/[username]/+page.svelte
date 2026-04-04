@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { deserialize } from '$app/forms'
-	import { invalidateAll } from '$app/navigation'
 	import { resolve } from '$app/paths'
 
 	import SideNav from '$lib/components/SideNav.svelte'
@@ -9,12 +8,22 @@
 
 	import type { PageData } from './$types'
 	const { data }: { data: PageData } = $props()
+	type ProfilePost = (typeof data.posts)[number]
 
 	let active_tab = $state<'Posts' | 'media' | 'liked posts'>('Posts')
-	const liked_posts = $state<Record<string, boolean>>({})
-	const like_count_override = $state<Record<string, number>>({})
+	let profile_posts = $state<ProfilePost[]>([])
+	let profile_liked_posts = $state<ProfilePost[]>([])
+	let liked_posts = $state<Record<string, boolean>>({})
+	let like_count_override = $state<Record<string, number>>({})
 
 	const followed_users = $state<Record<string, boolean>>({})
+
+	$effect(() => {
+		profile_posts = [...data.posts]
+		profile_liked_posts = [...(data.liked_posts ?? [])]
+		liked_posts = {}
+		like_count_override = {}
+	})
 
 	function format_join_date(dateString: Date | string) {
 		if (!dateString) return 'Unknown Date'
@@ -25,42 +34,79 @@
 	// THIS IS THE FIX: Move the filter logic out of the HTML and into a $derived rune
 	const displayed_posts = $derived.by(() => {
 		if (active_tab === 'liked posts') {
-			return data.liked_posts || []
+			return profile_liked_posts
 		}
 		if (active_tab === 'media') {
-			return data.posts.filter((p) => p.images && p.images.length > 0)
+			return profile_posts.filter((p) => p.images && p.images.length > 0)
 		}
-		return data.posts
+		return profile_posts
 	})
+
+	function update_local_post_state(post_id: string, is_next_liked: boolean, next_likes: number) {
+		const update_post = (p: ProfilePost) => {
+			if (p.id !== post_id) return p
+			return {
+				...p,
+				is_liked_by_user: is_next_liked,
+				stats: { ...p.stats, likes: next_likes }
+			}
+		}
+
+		profile_posts = profile_posts.map(update_post)
+		profile_liked_posts = profile_liked_posts.map(update_post)
+	}
+
+	function sync_owner_liked_posts(post: ProfilePost, post_id: string, is_liked: boolean) {
+		if (!data.is_owner) return
+
+		if (!is_liked) {
+			profile_liked_posts = profile_liked_posts.filter((p) => p.id !== post_id)
+			return
+		}
+
+		if (profile_liked_posts.some((p) => p.id === post_id)) return
+		profile_liked_posts = [post, ...profile_liked_posts]
+	}
 
 	async function toggle_like(post_id: string) {
 		const post =
-			data.posts.find((p) => p.id === post_id) || data.liked_posts?.find((p) => p.id === post_id)
+			profile_posts.find((p) => p.id === post_id) ||
+			profile_liked_posts.find((p) => p.id === post_id)
 		if (!post) return
 
 		const is_liked = liked_posts[post_id] ?? post.is_liked_by_user
 		const likes = like_count_override[post_id] ?? post.stats.likes
+		const is_next_liked = !is_liked
+		const next_likes = is_next_liked ? likes + 1 : Math.max(0, likes - 1)
 
-		liked_posts[post_id] = !is_liked
-		like_count_override[post_id] = !is_liked ? likes + 1 : Math.max(0, likes - 1)
+		liked_posts[post_id] = is_next_liked
+		like_count_override[post_id] = next_likes
+		update_local_post_state(post_id, is_next_liked, next_likes)
+
+		// On your own profile, keep "liked posts" tab in sync instantly.
+		const optimistic_owner_post: ProfilePost = {
+			...post,
+			is_liked_by_user: is_next_liked,
+			stats: { ...post.stats, likes: next_likes }
+		}
+		sync_owner_liked_posts(optimistic_owner_post, post_id, is_next_liked)
 
 		const form_data = new FormData()
 		form_data.append('postId', post_id)
 
 		try {
-			const response = await fetch('/home?/toggleLike', {
+			const response = await fetch('?/toggleLike', {
 				method: 'POST',
 				body: form_data
 			})
 			const result = deserialize(await response.text())
 			if (result.type === 'failure' || result.type === 'error') throw new Error()
-
-			await invalidateAll()
-			delete liked_posts[post_id]
-			delete like_count_override[post_id]
 		} catch {
 			liked_posts[post_id] = is_liked
 			like_count_override[post_id] = likes
+			update_local_post_state(post_id, is_liked, likes)
+
+			sync_owner_liked_posts(post, post_id, is_liked)
 		}
 	}
 
