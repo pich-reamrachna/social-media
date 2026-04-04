@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
 	import { enhance } from '$app/forms'
-	import { invalidateAll } from '$app/navigation'
+	import { goto, invalidateAll } from '$app/navigation'
+	import { SvelteMap } from 'svelte/reactivity'
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import './home.css'
@@ -86,6 +87,48 @@
 		)
 	}
 
+	const matched_users = $derived.by(() => {
+		const q = search_query.trim().toLowerCase()
+		if (!q) return []
+
+		const handle_query = q.startsWith('@') ? q.slice(1) : q
+		const users_by_handle = new SvelteMap<
+			string,
+			{ name: string; handle: string; avatar_url: string }
+		>()
+
+		for (const post of data.posts) {
+			const handle = (post.author.handle ?? '').trim()
+			if (!handle) continue
+			if (!users_by_handle.has(handle)) {
+				users_by_handle.set(handle, {
+					name: post.author.name,
+					handle,
+					avatar_url: post.author.avatar_url
+				})
+			}
+		}
+
+		for (const user of data.who_to_follow) {
+			if (!users_by_handle.has(user.handle)) {
+				users_by_handle.set(user.handle, {
+					name: user.name,
+					handle: user.handle,
+					avatar_url: user.avatar_url
+				})
+			}
+		}
+
+		const candidates = Array.from(users_by_handle.values())
+		return candidates
+			.filter((user) => {
+				const handle = user.handle.toLowerCase()
+				const name = user.name.toLowerCase()
+				return handle.includes(handle_query) || name.includes(q)
+			})
+			.slice(0, 6)
+	})
+
 	function show_toast(
 		type: 'success' | 'error' | 'warning' | 'loading',
 		message: string,
@@ -137,6 +180,11 @@
 		if (image_input) {
 			image_input.value = ''
 		}
+	}
+
+	function open_profile(handle: string) {
+		void handle
+		void goto(resolve('/profile'))
 	}
 </script>
 
@@ -243,6 +291,31 @@
 						placeholder="Search"
 						class="search-input"
 					/>
+					{#if search_query.trim()}
+						<div class="search-user-results">
+							{#if matched_users.length === 0}
+								<p class="search-user-empty">No usernames found</p>
+							{:else}
+								<ul>
+									{#each matched_users as user (user.handle)}
+										<li>
+											<button
+												type="button"
+												class="search-user-item"
+												onclick={() => open_profile(user.handle)}
+											>
+												<img src={user.avatar_url} alt={user.name} />
+												<span class="search-user-meta">
+													<strong>{user.name}</strong>
+													<small>@{user.handle}</small>
+												</span>
+											</button>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</div>
+					{/if}
 				</div>
 
 				<button
