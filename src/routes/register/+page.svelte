@@ -169,7 +169,7 @@
 </script>
 
 <div
-	class="flex min-h-screen bg-[#0d0d0d] font-sans text-gray-100 selection:bg-pink-500 selection:text-white"
+	class="flex min-h-screen overflow-x-hidden bg-[#0d0d0d] font-sans text-gray-100 selection:bg-pink-500 selection:text-white"
 >
 	<div
 		class="relative hidden flex-col justify-between bg-linear-to-br from-[#1a0f14] via-[#0d0d0d] to-[#0a0a0a] p-16 lg:flex lg:w-1/2"
@@ -208,11 +208,26 @@
 	</div>
 
 	<div
-		class="flex w-full flex-col items-center justify-center bg-[#111111] p-8 sm:p-12 lg:w-1/2 lg:p-24"
+		class="flex w-full flex-col items-center justify-center bg-[#111111] px-5 py-6 sm:p-12 lg:w-1/2 lg:p-24"
 	>
 		<div class="w-full max-w-md">
-			<div class="mb-12">
-				<h2 class="mb-2 text-3xl font-semibold tracking-tight text-white">Join Today.</h2>
+			<div class="mb-8 sm:mb-10 lg:hidden">
+				<h1
+					class="mb-3 bg-linear-to-br from-[#ff3377] to-[#ff7eb3] bg-clip-text text-6xl leading-none font-extrabold tracking-tighter text-transparent italic"
+				>
+					Y
+				</h1>
+				<p
+					class="max-w-[18rem] text-[11px] leading-relaxed tracking-[0.2em] text-gray-500 uppercase"
+				>
+					The Platform you didn't know existed.
+				</p>
+			</div>
+
+			<div class="mb-8 sm:mb-12">
+				<h2 class="mb-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+					Join Today
+				</h2>
 				<p class="text-sm text-gray-400">
 					Create your
 					<span
@@ -223,7 +238,7 @@
 				</p>
 			</div>
 
-			<form method="POST" class="space-y-6">
+			<form method="POST" class="space-y-5 sm:space-y-6">
 				{#if form?.message}
 					<p
 						class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
@@ -250,7 +265,7 @@
 						required
 					/>
 					{#if email_message}
-						<p class:text-red-400={email_status === 'invalid'} class="mt-2 text-sm">
+						<p class:text-red-400={email_status === 'invalid'} class="mt-2 text-sm break-words">
 							{email_message}
 						</p>
 					{/if}
@@ -278,7 +293,7 @@
 							class:text-gray-400={username_status === 'checking'}
 							class:text-green-400={username_status === 'available'}
 							class:text-red-400={username_status === 'taken' || username_status === 'error'}
-							class="mt-2 text-sm"
+							class="mt-2 text-sm break-words"
 						>
 							{username_message}
 						</p>
@@ -307,7 +322,7 @@
 							<p
 								class:text-red-400={password_status === 'invalid'}
 								class:text-green-400={password_status === 'valid'}
-								class="mt-2 text-sm"
+								class="mt-2 text-sm break-words"
 							>
 								{password_message}
 							</p>
@@ -378,7 +393,7 @@
 						<p
 							class:text-red-400={confirm_password_status === 'invalid'}
 							class:text-green-400={confirm_password_status === 'valid'}
-							class="mt-2 text-sm"
+							class="mt-2 text-sm break-words"
 						>
 							{confirm_password_message}
 						</p>
@@ -395,7 +410,7 @@
 				</div>
 			</form>
 
-			<div class="mt-12 text-center text-sm text-gray-500">
+			<div class="mt-10 text-center text-sm text-gray-500 sm:mt-12">
 				Already have an account?
 				<a
 					href={resolve('/login')}
