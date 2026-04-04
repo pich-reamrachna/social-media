@@ -368,6 +368,7 @@
 	gap: 0.875rem;
 	padding: 1rem 1.25rem;
 	border-bottom: 1px solid #1f1f1f;
+	margin-top: 1rem;
 }
 
 .composer-avatar {
@@ -692,6 +693,7 @@
 	.composer,
 	.post-card {
 		margin: 0 0.85rem;
+		margin-top: 1rem;
 		background-color: #111111;
 		border: 1px solid #1f1f1f;
 		border-radius: 1.1rem;
