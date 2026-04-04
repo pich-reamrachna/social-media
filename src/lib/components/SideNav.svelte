@@ -104,8 +104,6 @@
 				</a>
 			{/each}
 		</div>
-
-		<button type="button" class="side-nav-post-btn">Post</button>
 	</div>
 
 	<div class="side-nav-bottom">
@@ -169,8 +167,6 @@
 			<span>{item.label}</span>
 		</a>
 	{/each}
-
-	<button type="button" class="mobile-nav-add" aria-label="Create post">+</button>
 
 	<button
 		type="button"

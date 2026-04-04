@@ -248,10 +248,6 @@
 			<section class="settings-panel">
 				<h4>Settings</h4>
 				<ul>
-					<li><button type="button" class="settings-option">Dark Mode</button></li>
-					<li><button type="button" class="settings-option">Light Mode</button></li>
-					<li><button type="button" class="settings-option">Privacy</button></li>
-					<li><button type="button" class="settings-option">Language</button></li>
 					<li><button type="button" class="settings-option">Logout</button></li>
 				</ul>
 			</section>
