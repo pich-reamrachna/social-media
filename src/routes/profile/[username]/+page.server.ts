@@ -93,7 +93,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		current_user: viewer
 			? {
 					name: viewer.name,
-					handle: viewer.username || viewer.email?.split('@')[0] || 'user',
+					handle: viewer.username,
 					avatar_url: viewer.image || `https://i.pravatar.cc/150?u=${viewer.id}`
 				}
 			: undefined,
@@ -101,7 +101,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		profile: {
 			id: profile_user.id,
 			name: profile_user.name,
-			handle: profile_user.username ?? profile_user.email.split('@')[0],
+			handle: profile_user.username,
 			bio: profile_user.bio || 'This user has no bio yet.',
 			banner_url:
 				profile_user.banner ||
