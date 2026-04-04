@@ -12,6 +12,9 @@
 		}
 	},
 	"pnpm": {
+		"minimumReleaseAgeExclude": [
+			"defu"
+		],
 		"onlyBuiltDependencies": [
 			"esbuild",
 			"lefthook"
@@ -21,6 +24,7 @@
 			"better-sqlite3"
 		],
 		"overrides": {
+			"defu": "6.1.5",
 			"minimatch@3>brace-expansion": "^2.0.1",
 			"brace-expansion": "^5.0.5",
 			"esbuild": "^0.27.4",
