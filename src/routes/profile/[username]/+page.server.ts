@@ -1,28 +1,28 @@
 import { db } from '$lib/server/db'
 import { user } from '$lib/server/db/auth.schema'
 import { post } from '$lib/server/db/post'
-import { like } from '$lib/server/db/interactions' // Needed for the liked posts query
+import { like } from '$lib/server/db/interactions'
 import { error } from '@sveltejs/kit'
 import { desc, eq } from 'drizzle-orm'
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const viewer = locals.user
-	const targetUsername = params.username
+	const target_username = params.username
 
-	const profileUser = await db.query.user.findFirst({
-		where: eq(user.username, targetUsername)
+	const profile_user = await db.query.user.findFirst({
+		where: eq(user.username, target_username)
 	})
 
-	if (!profileUser) {
+	if (!profile_user) {
 		throw error(404, { message: 'Profile not found' })
 	}
 
-	const isOwner = viewer ? viewer.id === profileUser.id : false
+	const is_owner = viewer ? viewer.id === profile_user.id : false
 
 	// Fetch post that the user made
-	const profilePosts = await db.query.post.findMany({
-		where: eq(post.userId, profileUser.id),
+	const profile_posts = await db.query.post.findMany({
+		where: eq(post.userId, profile_user.id),
 		with: {
 			author: true,
 			likes: true,
@@ -32,8 +32,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	})
 
 	// Fetch liked posts by the user
-	const userLikes = await db.query.like.findMany({
-		where: eq(like.userId, profileUser.id),
+	const user_likes = await db.query.like.findMany({
+		where: eq(like.userId, profile_user.id),
 		with: {
 			post: {
 				with: {
@@ -47,7 +47,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	})
 
 	// Get posts from the like relation
-	const likedPosts = userLikes.map((l) => l.post)
+	const liked_posts = user_likes.map((l) => l.post)
 
 	const trending = [
 		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
@@ -68,8 +68,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	]
 
-	// Render post
-	const mapPostForFrontend = (p: any) => ({
+	// Render post - helper renamed to snake_case
+	const map_post_for_frontend = (p: any) => ({
 		id: p.id,
 		author: {
 			name: p.author.name,
@@ -94,22 +94,21 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 					handle: viewer.username || viewer.email?.split('@')[0] || 'user',
 					avatar_url: viewer.image || `https://i.pravatar.cc/150?u=${viewer.id}`
 				}
-			: null,
-		isOwner,
+			: undefined,
+		is_owner,
 		profile: {
-			id: profileUser.id,
-			name: profileUser.name,
-			handle: profileUser.username ?? profileUser.email.split('@')[0],
-			bio: profileUser.bio || 'This user has no bio yet.',
+			id: profile_user.id,
+			name: profile_user.name,
+			handle: profile_user.username ?? profile_user.email.split('@')[0],
+			bio: profile_user.bio || 'This user has no bio yet.',
 			banner_url:
-				profileUser.banner ||
+				profile_user.banner ||
 				'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop',
-			avatar_url: profileUser.image || `https://i.pravatar.cc/150?u=${profileUser.id}`,
-			joined_date: profileUser.createdAt
+			avatar_url: profile_user.image || `https://i.pravatar.cc/150?u=${profile_user.id}`,
+			joined_date: profile_user.createdAt
 		},
-		// 4. Return BOTH arrays to the frontend!
-		posts: profilePosts.map(mapPostForFrontend),
-		liked_posts: likedPosts.map(mapPostForFrontend),
+		posts: profile_posts.map(map_post_for_frontend),
+		liked_posts: liked_posts.map(map_post_for_frontend),
 		trending,
 		who_to_follow
 	}

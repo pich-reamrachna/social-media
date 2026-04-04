@@ -20,7 +20,7 @@
 	}>()
 
 	// 1. Updated the paths to use the specific user's handle
-	const nav_items: NavItem[] = [
+	const nav_items = $derived<NavItem[]>([
 		{
 			label: 'Home',
 			path: '/home',
@@ -46,7 +46,7 @@
 			path: `/profile/${current_user.handle}`, // Dynamic Path
 			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
 		}
-	]
+	])
 
 	const mobile_nav_start: NavItem[] = [
 		{

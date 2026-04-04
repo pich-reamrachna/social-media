@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { enhance, deserialize } from '$app/forms'
+	import { deserialize } from '$app/forms'
 	import { invalidateAll } from '$app/navigation'
 	import { resolve } from '$app/paths'
 
@@ -70,10 +70,12 @@
 </script>
 
 <div class="home-shell">
-	<SideNav
-		current_user={data.current_user}
-		active_route={resolve(`/profile/${data.profile.handle}`)}
-	/>
+	{#if data.current_user}
+		<SideNav
+			current_user={data.current_user}
+			active_route={resolve(`/profile/${data.profile.handle}`)}
+		/>
+	{/if}
 
 	<main class="feed-column">
 		<header
@@ -98,13 +100,15 @@
 				src={data.profile.avatar_url}
 				alt={data.profile.name}
 				class="z-10 -mt-15 h-30 w-30 rounded-full border-4 border-[#0d0d0d] bg-[#1f1f1f] object-cover"
-				onerror={(e) => (e.currentTarget.src = `https://i.pravatar.cc/150?u=${data.profile.id}`)}
+				onerror={(e) =>
+					((e.currentTarget as HTMLImageElement).src =
+						`https://i.pravatar.cc/150?u=${data.profile.id}`)}
 			/>
 
 			<div class="mt-3">
-				{#if data.isOwner}
+				{#if data.is_owner}
 					<button
-						class="rounded-full border border-[#6b7280] px-4 py-1.5 text-sm font-bold text-[#f3f4f6] transition-colors hover:bg-white/5"
+						class="rounded-full border border-[#f3f4f6] bg-[#f3f4f6] px-4 py-1.5 text-sm font-bold text-[#0d0d0d] transition-colors hover:bg-white/90"
 					>
 						Edit Profile
 					</button>
@@ -123,7 +127,7 @@
 			<span class="text-[0.95rem] text-[#6b7280]">@{data.profile.handle}</span>
 
 			<p class="my-3 text-[0.9375rem] leading-[1.6] text-[#e5e7eb]">
-				{@html data.profile.bio}
+				{data.profile.bio}
 			</p>
 
 			<div class="mb-3 flex flex-wrap gap-4 text-[0.85rem] text-[#6b7280]">

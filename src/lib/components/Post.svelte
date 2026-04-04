@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths'
+
 	const {
 		name,
 		handle,
@@ -43,7 +45,7 @@
 		<div class="flex flex-col gap-0.5">
 			<div class="flex flex-wrap items-center gap-1.5">
 				<a
-					href="/profile/{handle}"
+					href={resolve(`/profile/${handle}`)}
 					class="group flex items-center gap-1.5 text-inherit no-underline"
 				>
 					<span class="text-[0.9rem] font-bold text-[#f3f4f6] group-hover:underline">{name}</span>
