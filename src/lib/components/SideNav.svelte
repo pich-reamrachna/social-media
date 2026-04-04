@@ -8,11 +8,9 @@
 		avatar_url: string
 	}
 
-	type NavPath = '/home' | '/explore' | '/notifications' | '/messages' | '/profile'
-
 	type NavItem = {
 		label: string
-		path: NavPath
+		path: string
 		icon: string
 	}
 
@@ -23,7 +21,7 @@
 		on_settings_toggle?: () => void
 	}>()
 
-	const nav_items: NavItem[] = [
+	const nav_items = $derived.by<NavItem[]>(() => [
 		{
 			label: 'Home',
 			path: '/home',
@@ -46,10 +44,10 @@
 		},
 		{
 			label: 'Profile',
-			path: '/profile',
+			path: `/profile/${current_user?.handle || ''}`,
 			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
 		}
-	]
+	])
 
 	const mobile_nav_start: NavItem[] = [
 		{
@@ -64,7 +62,7 @@
 		}
 	]
 
-	const mobile_nav_end: NavItem[] = [
+	const mobile_nav_end = $derived.by<NavItem[]>(() => [
 		{
 			label: 'Notifications',
 			path: '/notifications',
@@ -72,10 +70,10 @@
 		},
 		{
 			label: 'Profile',
-			path: '/profile',
+			path: `/profile/${current_user?.handle || ''}`,
 			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
 		}
-	]
+	])
 </script>
 
 <nav class="side-nav">
@@ -88,9 +86,9 @@
 		<div class="side-nav-links">
 			{#each nav_items as item (item.path)}
 				<a
-					href={resolve(item.path)}
+					href={resolve(item.path as '/')}
 					class="side-nav-item"
-					class:active={active_route === resolve(item.path)}
+					class:active={active_route === resolve(item.path as '/')}
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -136,22 +134,27 @@
 			<span>Settings</span>
 		</button>
 
-		<div class="side-nav-user">
-			<img src={current_user.avatar_url} alt={current_user.name} class="side-nav-user-avatar" />
-			<div class="side-nav-user-info">
-				<div class="side-nav-user-name">{current_user.name}</div>
-				<div class="side-nav-user-handle">@{current_user.handle}</div>
-			</div>
-		</div>
+		{#if current_user}
+			<a
+				href={resolve(`/profile/${current_user.handle}` as '/')}
+				class="side-nav-user flex w-full items-center rounded-full p-3 text-inherit no-underline transition-colors hover:bg-white/5"
+			>
+				<img src={current_user.avatar_url} alt={current_user.name} class="side-nav-user-avatar" />
+				<div class="side-nav-user-info">
+					<div class="side-nav-user-name">{current_user.name}</div>
+					<div class="side-nav-user-handle">@{current_user.handle}</div>
+				</div>
+			</a>
+		{/if}
 	</div>
 </nav>
 
 <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
 	{#each mobile_nav_start as item (item.path)}
 		<a
-			href={resolve(item.path)}
+			href={resolve(item.path as '/')}
 			class="mobile-nav-item"
-			class:active={active_route === resolve(item.path)}
+			class:active={active_route === resolve(item.path as '/')}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -171,9 +174,9 @@
 
 	{#each mobile_nav_end as item (item.path)}
 		<a
-			href={resolve(item.path)}
+			href={resolve(item.path as '/')}
 			class="mobile-nav-item"
-			class:active={active_route === resolve(item.path)}
+			class:active={active_route === resolve(item.path as '/')}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
