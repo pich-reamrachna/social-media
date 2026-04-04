@@ -68,8 +68,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	]
 
+	type DbPost = (typeof profile_posts)[0]
+
 	// Render post - helper renamed to snake_case
-	const map_post_for_frontend = (p: any) => ({
+	const map_post_for_frontend = (p: DbPost) => ({
 		id: p.id,
 		author: {
 			name: p.author.name,
@@ -79,7 +81,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		content: p.content,
 		images: p.imageUrl ? [p.imageUrl] : [],
 		timestamp: p.createdAt,
-		is_liked_by_user: viewer ? p.likes.some((l: any) => l.userId === viewer.id) : false,
+		is_liked_by_user: viewer ? p.likes.some((l) => l.userId === viewer.id) : false,
 		stats: {
 			comments: 0,
 			echo_count: p.shares?.length ?? 0,

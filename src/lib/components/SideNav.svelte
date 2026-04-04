@@ -14,13 +14,11 @@
 		icon: string
 	}
 
-	// 1. Allow current_user to be null
 	const { current_user, active_route } = $props<{
 		current_user: User | null
 		active_route: string
 	}>()
 
-	// 2. Use $derived.by() to fix the reactivity warning
 	const nav_items = $derived.by<NavItem[]>(() => [
 		{
 			label: 'Home',
@@ -44,7 +42,7 @@
 		},
 		{
 			label: 'Profile',
-			path: `/profile/${current_user?.handle || ''}`, // Safe access with ?.
+			path: `/profile/${current_user?.handle || ''}`,
 			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
 		}
 	])
@@ -62,7 +60,6 @@
 		}
 	]
 
-	// 3. Convert this to $derived.by() as well so it updates when current_user loads
 	const mobile_nav_end = $derived.by<NavItem[]>(() => [
 		{
 			label: 'Notifications',
@@ -87,9 +84,9 @@
 		<div class="side-nav-links">
 			{#each nav_items as item (item.path)}
 				<a
-					href={resolve(item.path as any)}
+					href={resolve(item.path as '/')}
 					class="side-nav-item"
-					class:active={active_route === resolve(item.path as any)}
+					class:active={active_route === resolve(item.path as '/')}
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -112,7 +109,7 @@
 	<div class="side-nav-bottom">
 		{#if current_user}
 			<a
-				href={resolve(`/profile/${current_user.handle}` as any)}
+				href={resolve(`/profile/${current_user.handle}` as '/')}
 				class="side-nav-user flex w-full items-center rounded-full p-3 text-inherit no-underline transition-colors hover:bg-white/5"
 			>
 				<img src={current_user.avatar_url} alt={current_user.name} class="side-nav-user-avatar" />
@@ -128,9 +125,9 @@
 <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
 	{#each mobile_nav_start as item (item.path)}
 		<a
-			href={resolve(item.path as any)}
+			href={resolve(item.path as '/')}
 			class="mobile-nav-item"
-			class:active={active_route === resolve(item.path as any)}
+			class:active={active_route === resolve(item.path as '/')}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -150,9 +147,9 @@
 
 	{#each mobile_nav_end as item (item.path)}
 		<a
-			href={resolve(item.path as any)}
+			href={resolve(item.path as '/')}
 			class="mobile-nav-item"
-			class:active={active_route === resolve(item.path as any)}
+			class:active={active_route === resolve(item.path as '/')}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"

@@ -139,11 +139,11 @@
 		</div>
 
 		<nav class="mt-2 flex justify-around border-b border-[#1f1f1f]">
-			{#each ['Posts', 'media', 'liked posts'] as tab}
+			{#each ['Posts', 'media', 'liked posts'] as tab (tab)}
 				<button
 					class="relative flex-1 py-4 text-[0.8rem] font-semibold tracking-[0.08em] uppercase transition-colors hover:bg-white/5
                            {active_tab === tab ? 'text-[#f3f4f6]' : 'text-[#6b7280]'}"
-					onclick={() => (active_tab = tab as any)}
+					onclick={() => (active_tab = tab as 'Posts' | 'media' | 'liked posts')}
 				>
 					{tab}
 					{#if active_tab === tab}
