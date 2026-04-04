@@ -5,6 +5,7 @@
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import RightSidebar from '$lib/components/RightSidebar.svelte'
+	import PageTopBar from '$lib/components/PageTopBar.svelte'
 	import './home.css'
 	import { deserialize } from '$app/forms'
 
@@ -13,6 +14,10 @@
 	type FeedPost = PageData['posts'][number]
 
 	let active_tab = $state<'for-you' | 'following'>('for-you')
+	const home_tabs = [
+		{ id: 'for-you', label: 'For You' },
+		{ id: 'following', label: 'Following' }
+	]
 	let search_query = $state('')
 	let is_settings_open = $state(false)
 	let post_draft = $state('')
@@ -203,30 +208,39 @@
 			<span class="mobile-logo">Y</span>
 			<img src={data.current_user.avatar_url} alt={data.current_user.name} class="mobile-avatar" />
 		</div>
-
-		<div class="mobile-breaking">
-			<span class="breaking-label">BREAKING</span>
-			<span class="breaking-text">Global markets react to new decentralization policies</span>
-		</div>
 	</section>
 
 	<main class="feed-column">
-		<div class="feed-topbar">
-			<div class="feed-tabs">
-				<button
-					class="tab-btn"
-					class:tab-active={active_tab === 'for-you'}
-					onclick={() => (active_tab = 'for-you')}
+		<div class="feed-sticky-controls">
+			<PageTopBar
+				tabs={home_tabs}
+				{active_tab}
+				on_change={(tab) => (active_tab = tab as 'for-you' | 'following')}
+				extra_class="feed-topbar-main"
+			/>
+			<div class="feed-search-group feed-search-main">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="feed-search-icon"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
 				>
-					For You
-				</button>
-				<button
-					class="tab-btn"
-					class:tab-active={active_tab === 'following'}
-					onclick={() => (active_tab = 'following')}
-				>
-					Following
-				</button>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+					/>
+				</svg>
+				<input
+					type="search"
+					value={search_query}
+					oninput={(e) => (search_query = (e.target as HTMLInputElement).value)}
+					placeholder="Search"
+					aria-label="Search posts"
+					class="feed-search-input"
+				/>
 			</div>
 		</div>
 
@@ -356,21 +370,6 @@
 		on_search_change={(value) => (search_query = value)}
 		on_toggle_follow={toggle_follow}
 	/>
-
-	<section class="posts-column">
-		{#each filter_posts() as post (post.id)}
-			<Post
-				name={post.author.name}
-				handle={post.author.handle ?? ''}
-				content={post.content}
-				images={post.images}
-				timestamp={post.timestamp}
-				likes={like_count_override[post.id] ?? post.stats.likes}
-				is_liked={liked_posts[post.id] ?? post.is_liked_by_user}
-				on_like={() => toggle_like(post.id)}
-			/>
-		{/each}
-	</section>
 
 	<footer class="mobile-legal-footer">
 		<a href={resolve('/terms')}>Terms of Service</a>

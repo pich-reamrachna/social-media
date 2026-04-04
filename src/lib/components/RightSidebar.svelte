@@ -362,6 +362,10 @@
 			width: 100%;
 			padding: 1rem 0.85rem;
 		}
+
+		.sidebar-search-group {
+			display: none;
+		}
 	}
 
 	@media (max-width: 640px) {
