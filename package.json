@@ -28,7 +28,8 @@
 			"cookie": "^0.7.0",
 			"picomatch": "^4.0.4",
 			"smol-toml": "^1.6.1",
-			"camelcase": "5"
+			"camelcase": "5",
+			"defu": "^6.1.5"
 		}
 	},
 	"scripts": {
