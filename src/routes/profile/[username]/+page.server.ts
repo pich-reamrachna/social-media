@@ -75,7 +75,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		id: p.id,
 		author: {
 			name: p.author.name,
-			handle: p.author.username ?? p.author.email?.split('@')[0] ?? 'user',
+			handle: p.author.username,
 			avatar_url: p.author.image || `https://i.pravatar.cc/150?u=${p.author.id}`
 		},
 		content: p.content,

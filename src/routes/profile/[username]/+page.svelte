@@ -205,7 +205,7 @@
 			{#each displayed_posts as post (post.id)}
 				<Post
 					name={post.author.name}
-					handle={post.author.handle}
+					handle={post.author.handle ?? 'unknown-user'}
 					content={post.content}
 					images={post.images}
 					timestamp={post.timestamp}
