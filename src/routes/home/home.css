@@ -28,20 +28,19 @@
 @media (max-width: 1024px) {
 	.home-shell {
 		grid-template-columns: 80px 1fr;
+		grid-template-rows: auto auto;
+		align-content: start;
 	}
 
 	.feed-column {
 		grid-column: 2;
 		grid-row: 1;
-		order: 1;
-		min-height: auto;
+		min-height: auto !important;
 	}
 
 	.posts-column {
 		display: none;
 		grid-column: 2;
-		grid-row: 2;
-		order: 2;
 		min-height: auto;
 	}
 
@@ -53,7 +52,7 @@
 		display: flex;
 		grid-column: 2;
 		grid-row: 2;
-		order: 2;
+		align-self: start;
 		justify-self: stretch;
 		width: 100%;
 		position: static;
@@ -67,22 +66,24 @@
 	.mobile-prelude {
 		display: none;
 		grid-column: 2;
-		grid-row: 1;
-		order: 3;
 	}
 }
 
 @media (max-width: 640px) {
 	.home-shell {
 		grid-template-columns: 1fr;
+		grid-template-areas:
+			'mobile-prelude'
+			'feed'
+			'sidebar'
+			'footer';
+		align-content: start;
 		padding-bottom: 6rem;
 	}
 
 	.mobile-prelude {
 		display: block;
-		grid-column: 1;
-		grid-row: 1;
-		order: 1;
+		grid-area: mobile-prelude;
 	}
 }
 
@@ -715,18 +716,14 @@
 
 @media (max-width: 640px) {
 	.feed-column {
-		order: 2;
-		grid-column: 1;
-		grid-row: 2;
+		grid-area: feed;
+		align-self: start;
 		border-right: none;
-		min-height: auto;
+		min-height: auto !important;
 	}
 
 	.posts-column {
 		display: none;
-		order: 3;
-		grid-column: 1;
-		grid-row: 3;
 		border-right: none;
 		min-height: auto;
 	}
@@ -741,9 +738,8 @@
 
 	.right-sidebar {
 		display: flex;
-		grid-row: 3;
-		order: 3;
-		grid-column: 1;
+		grid-area: sidebar;
+		align-self: start;
 		justify-self: stretch;
 		width: 100%;
 		position: static;
@@ -758,9 +754,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem 1rem;
-		order: 4;
-		grid-column: 1;
-		grid-row: 4;
+		grid-area: footer;
 		padding: 0.9rem 0.85rem 6rem;
 		border-top: 1px solid #1f1f1f;
 		color: #6b7280;

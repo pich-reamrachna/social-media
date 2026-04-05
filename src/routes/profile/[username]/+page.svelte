@@ -255,6 +255,7 @@
 					<Post
 						name={post.author.name}
 						handle={post.author.handle ?? 'unknown-user'}
+						avatar_url={post.author.avatar_url}
 						content={post.content}
 						images={post.images}
 						timestamp={post.timestamp}

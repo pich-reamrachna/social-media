@@ -207,7 +207,7 @@
 		padding: 1rem 0.85rem;
 	}
 
-	.sidebar-search-group {
+	.search-dropdown.sidebar-search-group {
 		display: none;
 	}
 }
