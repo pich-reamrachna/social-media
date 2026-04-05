@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
 	import './RightSidebar.css'
+	import SearchDropdown from '$lib/components/SearchDropdown.svelte'
 
 	type TrendingItem = {
 		category: string
@@ -18,46 +19,37 @@
 		trending,
 		who_to_follow,
 		search_query = '',
+		search_users = [],
 		followed_users = {},
 		on_search_change,
+		on_open_profile,
+		on_apply_keyword_search,
 		on_toggle_follow,
 		is_footer_visible = true
 	} = $props<{
 		trending: TrendingItem[]
 		who_to_follow: FollowUser[]
 		search_query?: string
+		search_users?: FollowUser[]
 		followed_users?: Record<string, boolean>
 		on_search_change?: (value: string) => void
+		on_open_profile?: (handle: string) => void
+		on_apply_keyword_search?: () => void
 		on_toggle_follow?: (handle: string) => void
 		is_footer_visible?: boolean
 	}>()
 </script>
 
 <aside class="right-sidebar">
-	<div class="search-group sidebar-search-group">
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="search-icon"
-			fill="none"
-			viewBox="0 0 24 24"
-			stroke="currentColor"
-			stroke-width="2"
-		>
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-			/>
-		</svg>
-		<input
-			type="text"
-			value={search_query}
-			oninput={(e) => on_search_change?.((e.target as HTMLInputElement).value)}
-			placeholder="Search"
-			aria-label="Search"
-			class="search-input"
-		/>
-	</div>
+	<SearchDropdown
+		extra_class="sidebar-search-group"
+		{search_query}
+		{search_users}
+		aria_label="Search"
+		{on_search_change}
+		{on_open_profile}
+		{on_apply_keyword_search}
+	/>
 
 	<div class="sidebar-card">
 		<h3 class="sidebar-card-title">Trending Now</h3>

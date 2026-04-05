@@ -123,40 +123,30 @@
 	display: none;
 }
 
-.feed-search-group {
-	display: flex;
-	align-items: center;
-	gap: 0.45rem;
-	padding: 0.35rem 0.75rem;
-	margin: 0.5rem 0.85rem 0.75rem;
-	background-color: #111111;
-	border: 1px solid #1f1f1f;
-	border-radius: 9999px;
-}
-
-.feed-search-icon {
-	width: 1rem;
-	height: 1rem;
-	color: #6b7280;
-	flex-shrink: 0;
-}
-
-.feed-search-input {
-	width: 100%;
-	border: none;
-	outline: none;
-	background: transparent;
-	color: #f3f4f6;
-	font: inherit;
-	font-size: 0.875rem;
-}
-
-.feed-search-input::placeholder {
-	color: #4b5563;
-}
-
 .feed-search-main {
 	display: none;
+	margin: 0.5rem 0.85rem 0.75rem;
+}
+
+.search-empty-state {
+	margin: 1rem 1.25rem 0;
+	padding: 1.25rem;
+	border: 1px solid #1f1f1f;
+	border-radius: 1rem;
+	background-color: #111111;
+}
+
+.search-empty-title {
+	margin: 0;
+	color: #f3f4f6;
+	font-size: 0.95rem;
+	font-weight: 700;
+}
+
+.search-empty-copy {
+	margin: 0.35rem 0 0;
+	color: #6b7280;
+	font-size: 0.85rem;
 }
 
 .feed-sticky-controls {
@@ -947,7 +937,7 @@
 		top: 0;
 	}
 
-	.feed-search-group {
+	.feed-search-main {
 		margin: 0.45rem 0.65rem 0.65rem;
 	}
 
