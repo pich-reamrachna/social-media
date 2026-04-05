@@ -1,4 +1,5 @@
 import type { Handle } from '@sveltejs/kit'
+import { normalizeUrl } from '@sveltejs/kit'
 import { building, dev } from '$app/environment'
 import { auth } from '$lib/server/auth'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
@@ -27,7 +28,8 @@ const should_load_session = (pathname: string) => {
 const handle_better_auth: Handle = async ({ event, resolve }) => {
 	const request_label = `${event.request.method} ${event.url.pathname}`
 	const request_started_at = dev ? performance.now() : 0
-	const pathname = event.url.pathname
+	const { url: normalized_url } = normalizeUrl(event.url)
+	const pathname = normalized_url.pathname
 	const cookie_header = event.request.headers.get('cookie') ?? ''
 
 	if (should_load_session(pathname)) {
