@@ -11,6 +11,7 @@
 	type ProfilePost = (typeof data.posts)[number]
 
 	let active_tab = $state<'Posts' | 'media' | 'liked posts'>('Posts')
+	let is_settings_open = $state(false)
 	let profile_posts = $state<ProfilePost[]>([])
 	let profile_liked_posts = $state<ProfilePost[]>([])
 	let is_liked_posts_loading = $state(false)
@@ -161,6 +162,8 @@
 		<SideNav
 			current_user={data.current_user}
 			active_route={resolve(`/profile/${data.profile.handle}`)}
+			{is_settings_open}
+			on_settings_toggle={() => (is_settings_open = !is_settings_open)}
 		/>
 	{/if}
 
