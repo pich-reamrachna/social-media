@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
 	import { enhance } from '$app/forms'
-	import { invalidateAll } from '$app/navigation'
+	import { goto, invalidateAll } from '$app/navigation'
+	import { SvelteMap } from 'svelte/reactivity'
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import RightSidebar from '$lib/components/RightSidebar.svelte'
+	import SearchDropdown from '$lib/components/SearchDropdown.svelte'
 	import PageTopBar from '$lib/components/PageTopBar.svelte'
 	import './home.css'
 	import { deserialize } from '$app/forms'
@@ -12,6 +14,11 @@
 	import type { PageData } from './$types'
 	const { data }: { data: PageData } = $props()
 	type FeedPost = PageData['posts'][number]
+	type SearchUser = {
+		name: string
+		handle: string
+		avatar_url: string
+	}
 
 	let active_tab = $state<'for-you' | 'following'>('for-you')
 	const home_tabs = [
@@ -19,6 +26,7 @@
 		{ id: 'following', label: 'Following' }
 	]
 	let search_query = $state('')
+	let applied_keyword_search = $state('')
 	let is_settings_open = $state(false)
 	let post_draft = $state('')
 	let composer_form: HTMLFormElement | undefined = $state(undefined)
@@ -83,14 +91,60 @@
 	}
 
 	function filter_posts() {
-		const q = search_query.toLowerCase().trim()
+		const q = applied_keyword_search.toLowerCase().trim()
 		if (!q) return data.posts
-		return data.posts.filter(
-			(post: FeedPost) =>
-				post.content.toLowerCase().includes(q) ||
-				post.author.name.toLowerCase().includes(q) ||
-				(post.author.handle ?? '').toLowerCase().includes(q)
-		)
+
+		return data.posts.filter((post: FeedPost) => post.content.toLowerCase().includes(q))
+	}
+
+	function get_search_users(): SearchUser[] {
+		const users = new SvelteMap<string, SearchUser>()
+
+		const add_user = (user: SearchUser) => {
+			const normalized_handle = user.handle.trim().toLowerCase()
+			if (!normalized_handle || users.has(normalized_handle)) return
+			users.set(normalized_handle, user)
+		}
+
+		add_user(data.current_user)
+
+		for (const post of data.posts) {
+			add_user(post.author)
+		}
+
+		for (const user of data.who_to_follow) {
+			add_user(user)
+		}
+
+		return [...users.values()]
+	}
+
+	function get_matched_users(): SearchUser[] {
+		const q = search_query.toLowerCase().trim()
+		if (!q) return []
+
+		return get_search_users()
+			.filter(
+				(user) => user.name.toLowerCase().includes(q) || user.handle.toLowerCase().includes(q)
+			)
+			.slice(0, 6)
+	}
+
+	function open_profile(handle: string) {
+		search_query = ''
+		goto(resolve(`/profile/${handle}`))
+	}
+
+	function apply_keyword_search() {
+		const q = search_query.trim()
+		if (!q) return
+
+		applied_keyword_search = q
+		search_query = ''
+	}
+
+	function clear_keyword_search() {
+		applied_keyword_search = ''
 	}
 
 	function show_toast(
@@ -215,33 +269,22 @@
 			<PageTopBar
 				tabs={home_tabs}
 				{active_tab}
-				on_change={(tab) => (active_tab = tab as 'for-you' | 'following')}
+				on_change={(tab_id: string) => {
+					if (tab_id === 'for-you' || tab_id === 'following') {
+						active_tab = tab_id
+					}
+				}}
 				extra_class="feed-topbar-main"
 			/>
-			<div class="feed-search-group feed-search-main">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="feed-search-icon"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-					/>
-				</svg>
-				<input
-					type="search"
-					value={search_query}
-					oninput={(e) => (search_query = (e.target as HTMLInputElement).value)}
-					placeholder="Search"
-					aria-label="Search posts"
-					class="feed-search-input"
-				/>
-			</div>
+			<SearchDropdown
+				extra_class="feed-search-main"
+				aria_label="Search posts"
+				{search_query}
+				search_users={get_matched_users()}
+				on_search_change={(value: string) => (search_query = value)}
+				on_open_profile={open_profile}
+				on_apply_keyword_search={apply_keyword_search}
+			/>
 		</div>
 
 		{#if is_settings_open}
@@ -249,6 +292,19 @@
 				<h4>Settings</h4>
 				<ul>
 					<li><button type="button" class="settings-option">Logout</button></li>
+				</ul>
+			</section>
+		{/if}
+
+		{#if applied_keyword_search}
+			<section class="settings-panel">
+				<h4>Keyword Filter</h4>
+				<ul>
+					<li>
+						<button type="button" class="settings-option" onclick={clear_keyword_search}>
+							Clear "{applied_keyword_search}"
+						</button>
+					</li>
 				</ul>
 			</section>
 		{/if}
@@ -343,18 +399,27 @@
 		</form>
 
 		<div class="desktop-posts">
-			{#each filter_posts() as post (post.id)}
-				<Post
-					name={post.author.name}
-					handle={post.author.handle ?? ''}
-					content={post.content}
-					images={post.images}
-					timestamp={post.timestamp}
-					likes={like_count_override[post.id] ?? post.stats.likes}
-					is_liked={liked_posts[post.id] ?? post.is_liked_by_user}
-					on_like={() => toggle_like(post.id)}
-				/>
-			{/each}
+			{#if applied_keyword_search && filter_posts().length === 0}
+				<div class="search-empty-state">
+					<p class="search-empty-title">No matches found</p>
+					<p class="search-empty-copy">
+						No post matched "{applied_keyword_search}".
+					</p>
+				</div>
+			{:else}
+				{#each filter_posts() as post (post.id)}
+					<Post
+						name={post.author.name}
+						handle={post.author.handle ?? ''}
+						content={post.content}
+						images={post.images}
+						timestamp={post.timestamp}
+						likes={like_count_override[post.id] ?? post.stats.likes}
+						is_liked={liked_posts[post.id] ?? post.is_liked_by_user}
+						on_like={() => toggle_like(post.id)}
+					/>
+				{/each}
+			{/if}
 		</div>
 	</main>
 
@@ -362,8 +427,11 @@
 		trending={data.trending}
 		who_to_follow={data.who_to_follow}
 		{search_query}
+		search_users={get_matched_users()}
 		{followed_users}
-		on_search_change={(value) => (search_query = value)}
+		on_search_change={(value: string) => (search_query = value)}
+		on_open_profile={open_profile}
+		on_apply_keyword_search={apply_keyword_search}
 		on_toggle_follow={toggle_follow}
 	/>
 
