@@ -169,7 +169,7 @@
 </script>
 
 <div
-	class="flex min-h-screen bg-[#0d0d0d] font-sans text-gray-100 selection:bg-pink-500 selection:text-white"
+	class="flex min-h-screen overflow-x-hidden bg-[#0d0d0d] font-sans text-gray-100 selection:bg-pink-500 selection:text-white"
 >
 	<div
 		class="relative hidden flex-col justify-between bg-linear-to-br from-[#1a0f14] via-[#0d0d0d] to-[#0a0a0a] p-16 lg:flex lg:w-1/2"
@@ -208,11 +208,26 @@
 	</div>
 
 	<div
-		class="flex w-full flex-col items-center justify-center bg-[#111111] p-8 sm:p-12 lg:w-1/2 lg:p-24"
+		class="flex w-full flex-col items-center justify-center bg-[#111111] px-7 py-6 sm:px-10 sm:py-12 lg:w-1/2 lg:p-24"
 	>
 		<div class="w-full max-w-md">
-			<div class="mb-12">
-				<h2 class="mb-2 text-3xl font-semibold tracking-tight text-white">Join Today.</h2>
+			<div class="mb-8 sm:mb-10 lg:hidden">
+				<h1
+					class="mb-3 bg-linear-to-br from-[#ff3377] to-[#ff7eb3] bg-clip-text text-6xl leading-none font-extrabold tracking-tighter text-transparent italic"
+				>
+					Y
+				</h1>
+				<p
+					class="max-w-[18rem] text-[11px] leading-relaxed tracking-[0.2em] text-gray-500 uppercase"
+				>
+					The Platform you didn't know existed.
+				</p>
+			</div>
+
+			<div class="mb-8 sm:mb-12">
+				<h2 class="mb-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+					Join Today
+				</h2>
 				<p class="text-sm text-gray-400">
 					Create your
 					<span
@@ -223,7 +238,7 @@
 				</p>
 			</div>
 
-			<form method="POST" class="space-y-6">
+			<form method="POST" class="space-y-5 sm:space-y-6">
 				{#if form?.message}
 					<p
 						class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
@@ -250,7 +265,7 @@
 						required
 					/>
 					{#if email_message}
-						<p class:text-red-400={email_status === 'invalid'} class="mt-2 text-sm">
+						<p class:text-red-400={email_status === 'invalid'} class="mt-2 text-sm break-words">
 							{email_message}
 						</p>
 					{/if}
@@ -278,7 +293,7 @@
 							class:text-gray-400={username_status === 'checking'}
 							class:text-green-400={username_status === 'available'}
 							class:text-red-400={username_status === 'taken' || username_status === 'error'}
-							class="mt-2 text-sm"
+							class="mt-2 text-sm break-words"
 						>
 							{username_message}
 						</p>
@@ -303,36 +318,12 @@
 							class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
 							required
 						/>
-						{#if password_message}
-							<p
-								class:text-red-400={password_status === 'invalid'}
-								class:text-green-400={password_status === 'valid'}
-								class="mt-2 text-sm"
-							>
-								{password_message}
-							</p>
-						{/if}
 						<button
 							type="button"
 							onclick={toggle_password}
 							class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-500 transition-colors hover:text-gray-300"
 						>
 							{#if is_show_password}
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-4 w-4"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									stroke-width="2"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-									/>
-								</svg>
-							{:else}
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
 									class="h-4 w-4"
@@ -352,9 +343,33 @@
 										d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
 									/>
 								</svg>
+							{:else}
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-4 w-4"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+									/>
+								</svg>
 							{/if}
 						</button>
 					</div>
+					{#if password_message}
+						<p
+							class:text-red-400={password_status === 'invalid'}
+							class:text-green-400={password_status === 'valid'}
+							class="mt-2 text-sm break-words"
+						>
+							{password_message}
+						</p>
+					{/if}
 				</div>
 
 				<div>
@@ -378,7 +393,7 @@
 						<p
 							class:text-red-400={confirm_password_status === 'invalid'}
 							class:text-green-400={confirm_password_status === 'valid'}
-							class="mt-2 text-sm"
+							class="mt-2 text-sm break-words"
 						>
 							{confirm_password_message}
 						</p>
@@ -395,7 +410,7 @@
 				</div>
 			</form>
 
-			<div class="mt-12 text-center text-sm text-gray-500">
+			<div class="mt-10 text-center text-sm text-gray-500 sm:mt-12">
 				Already have an account?
 				<a
 					href={resolve('/login')}
