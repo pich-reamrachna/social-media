@@ -2,7 +2,7 @@ import { db } from '$lib/server/db'
 import { post } from '$lib/server/db/post'
 import { like } from '$lib/server/db/interactions'
 import { fail, redirect } from '@sveltejs/kit'
-import { desc, and, eq } from 'drizzle-orm'
+import { desc, and, eq, inArray, sql } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
@@ -99,11 +99,21 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const posts = await db.query.post.findMany({
 		with: {
-			author: true,
-			likes: true
+			author: true
 		},
 		orderBy: [desc(post.createdAt)]
 	})
+
+	const post_ids = posts.map((p) => p.id)
+	const viewer_likes = post_ids.length
+		? await db
+				.select({
+					post_id: like.postId
+				})
+				.from(like)
+				.where(and(eq(like.userId, user.id), inArray(like.postId, post_ids)))
+		: []
+	const liked_post_ids = new Set(viewer_likes.map((entry) => entry.post_id))
 
 	// for now, just return some dummy data for trending
 	const trending = [
@@ -142,11 +152,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 			content: p.content,
 			images: p.imageUrl ? [p.imageUrl] : [],
 			timestamp: p.createdAt,
-			is_liked_by_user: p.likes.some((l) => l.userId === user.id),
+			is_liked_by_user: liked_post_ids.has(p.id),
 			stats: {
 				comments: 0,
-				echo_count: 0,
-				likes: p.likes.length
+				echo_count: p.shareCount,
+				likes: p.likeCount
 			}
 		})),
 		trending,
@@ -191,14 +201,11 @@ export const actions: Actions = {
 	toggleLike: async ({ request, locals }) => {
 		const user = locals.user
 		if (!user) {
-			console.warn('toggleLike: No user found')
 			return fail(401)
 		}
 
 		const form_data = await request.formData()
 		const post_id = form_data.get('postId') as string
-
-		console.info('toggleLike: Received post_id:', post_id, 'for user:', user.id)
 
 		if (!post_id) return fail(400)
 
@@ -209,22 +216,42 @@ export const actions: Actions = {
 			.limit(1)
 
 		const existing_like = existing_likes[0]
-
-		console.info('toggleLike: existing_like found:', !!existing_like)
+		const current_post = await db.query.post.findFirst({
+			where: eq(post.id, post_id),
+			columns: {
+				likeCount: true
+			}
+		})
+		if (!current_post) return fail(404)
 
 		try {
 			if (existing_like) {
-				console.info('toggleLike: Deleting like')
 				await db.delete(like).where(and(eq(like.postId, post_id), eq(like.userId, user.id)))
+				await db
+					.update(post)
+					.set({
+						likeCount: sql`greatest(${post.likeCount} - 1, 0)`
+					})
+					.where(eq(post.id, post_id))
 			} else {
-				console.info('toggleLike: Inserting like')
 				await db.insert(like).values({ userId: user.id, postId: post_id })
+				await db
+					.update(post)
+					.set({
+						likeCount: sql`${post.likeCount} + 1`
+					})
+					.where(eq(post.id, post_id))
 			}
 		} catch (error) {
-			console.error('toggleLike: DATABASE ERROR:', error)
+			console.error('toggleLike database error:', error)
 			return fail(500)
 		}
 
-		return { success: true }
+		return {
+			success: true,
+			post_id,
+			is_liked: !existing_like,
+			likes: existing_like ? Math.max(0, current_post.likeCount - 1) : current_post.likeCount + 1
+		}
 	}
 }
