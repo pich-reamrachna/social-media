@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
 	import { enhance } from '$app/forms'
-	import { goto, invalidateAll } from '$app/navigation'
+	import { goto } from '$app/navigation'
 	import { SvelteMap } from 'svelte/reactivity'
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
@@ -72,12 +72,17 @@
 				throw new Error()
 			}
 
-			// Wait for server state to refresh
-			await invalidateAll()
+			const payload =
+				result.type === 'success'
+					? (result.data as { is_liked?: boolean; likes?: number } | undefined)
+					: undefined
 
-			// Clear overrides so we use the fresh data from the server
-			delete liked_posts[post_id]
-			delete like_count_override[post_id]
+			if (typeof payload?.is_liked === 'boolean') {
+				liked_posts[post_id] = payload.is_liked
+			}
+			if (typeof payload?.likes === 'number') {
+				like_count_override[post_id] = payload.likes
+			}
 		} catch {
 			// Rollback on error
 			liked_posts[post_id] = is_liked

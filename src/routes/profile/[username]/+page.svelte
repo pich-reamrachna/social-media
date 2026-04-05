@@ -13,6 +13,8 @@
 	let active_tab = $state<'Posts' | 'media' | 'liked posts'>('Posts')
 	let profile_posts = $state<ProfilePost[]>([])
 	let profile_liked_posts = $state<ProfilePost[]>([])
+	let is_liked_posts_loading = $state(false)
+	let has_loaded_liked_posts = $state(false)
 	let liked_posts = $state<Record<string, boolean>>({})
 	let like_count_override = $state<Record<string, number>>({})
 
@@ -20,7 +22,9 @@
 
 	$effect(() => {
 		profile_posts = [...data.posts]
-		profile_liked_posts = [...(data.liked_posts ?? [])]
+		profile_liked_posts = []
+		has_loaded_liked_posts = false
+		is_liked_posts_loading = false
 		liked_posts = {}
 		like_count_override = {}
 	})
@@ -41,6 +45,43 @@
 		}
 		return profile_posts
 	})
+
+	async function ensure_liked_posts_loaded() {
+		if (has_loaded_liked_posts || is_liked_posts_loading) return
+
+		is_liked_posts_loading = true
+
+		try {
+			const form_data = new FormData()
+			const response = await fetch('?/loadLikedPosts', {
+				method: 'POST',
+				body: form_data
+			})
+			const result = deserialize(await response.text())
+			if (result.type === 'failure' || result.type === 'error') {
+				throw new Error()
+			}
+
+			const payload =
+				result.type === 'success'
+					? (result.data as { liked_posts?: ProfilePost[] } | undefined)
+					: undefined
+
+			profile_liked_posts = payload?.liked_posts ?? []
+			has_loaded_liked_posts = true
+		} catch {
+			profile_liked_posts = []
+		} finally {
+			is_liked_posts_loading = false
+		}
+	}
+
+	function select_tab(tab: 'Posts' | 'media' | 'liked posts') {
+		active_tab = tab
+		if (tab === 'liked posts') {
+			void ensure_liked_posts_loaded()
+		}
+	}
 
 	function update_local_post_state(post_id: string, is_next_liked: boolean, next_likes: number) {
 		const update_post = (p: ProfilePost) => {
@@ -189,7 +230,7 @@
 				<button
 					class="relative flex-1 py-4 text-[0.8rem] font-semibold tracking-[0.08em] uppercase transition-colors hover:bg-white/5
                            {active_tab === tab ? 'text-[#f3f4f6]' : 'text-[#6b7280]'}"
-					onclick={() => (active_tab = tab as 'Posts' | 'media' | 'liked posts')}
+					onclick={() => select_tab(tab as 'Posts' | 'media' | 'liked posts')}
 				>
 					{tab}
 					{#if active_tab === tab}
@@ -202,20 +243,26 @@
 		</nav>
 
 		<div class="pb-12">
-			{#each displayed_posts as post (post.id)}
-				<Post
-					name={post.author.name}
-					handle={post.author.handle ?? 'unknown-user'}
-					content={post.content}
-					images={post.images}
-					timestamp={post.timestamp}
-					likes={like_count_override[post.id] ?? post.stats.likes}
-					is_liked={liked_posts[post.id] ?? post.is_liked_by_user}
-					on_like={() => toggle_like(post.id)}
-				/>
-			{/each}
+			{#if active_tab === 'liked posts' && is_liked_posts_loading}
+				<div class="p-10 text-center text-[#6b7280]">
+					<p>Loading liked posts...</p>
+				</div>
+			{:else}
+				{#each displayed_posts as post (post.id)}
+					<Post
+						name={post.author.name}
+						handle={post.author.handle ?? 'unknown-user'}
+						content={post.content}
+						images={post.images}
+						timestamp={post.timestamp}
+						likes={like_count_override[post.id] ?? post.stats.likes}
+						is_liked={liked_posts[post.id] ?? post.is_liked_by_user}
+						on_like={() => toggle_like(post.id)}
+					/>
+				{/each}
+			{/if}
 
-			{#if displayed_posts.length === 0}
+			{#if !is_liked_posts_loading && displayed_posts.length === 0}
 				<div class="p-10 text-center text-[#6b7280]">
 					<p>No posts found here.</p>
 				</div>

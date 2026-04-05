@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, integer } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { user } from './auth.schema.js'
 import { like, share } from './interactions.js'
@@ -9,6 +9,8 @@ export const post = pgTable('post', {
 		.$defaultFn(() => crypto.randomUUID()),
 	content: text('content').notNull(),
 	imageUrl: text('image_url'),
+	likeCount: integer('like_count').notNull().default(0),
+	shareCount: integer('share_count').notNull().default(0),
 	userId: text('user_id')
 		.notNull()
 		.references(() => user.id, { onDelete: 'cascade' }),
