@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths'
+
 	const {
 		name,
 		handle,
@@ -38,31 +40,48 @@
 	}
 </script>
 
-<article class="post-card">
-	<div class="post-header">
-		<div class="post-author-info">
-			<div class="post-author-top">
-				<span class="post-author-name">{name}</span>
-				<span class="post-author-handle">@{handle}</span>
-				<span class="post-dot">·</span>
-				<span class="post-timestamp">{format_time(timestamp)}</span>
+<article class="cursor-pointer border-b border-[#1f1f1f] p-5 transition-colors hover:bg-white/5">
+	<div class="mb-3">
+		<div class="flex flex-col gap-0.5">
+			<div class="flex flex-wrap items-center gap-1.5">
+				<a
+					href={resolve(`/profile/${handle}`)}
+					class="group flex items-center gap-1.5 text-inherit no-underline"
+				>
+					<span class="text-[0.9rem] font-bold text-[#f3f4f6] group-hover:underline">{name}</span>
+					<span class="text-[0.8rem] text-[#6b7280]">@{handle}</span>
+				</a>
+				<span class="text-[0.8rem] text-[#6b7280]">·</span>
+				<span class="text-[0.8rem] text-[#6b7280]">{format_time(timestamp)}</span>
 			</div>
 		</div>
 	</div>
 
-	<p class="post-content">{content}</p>
+	<p
+		class="mb-3.5 ml-0 text-[0.9375rem] leading-relaxed whitespace-pre-wrap text-[#e5e7eb] sm:ml-0"
+	>
+		{content}
+	</p>
 
 	{#if images.length === 1}
-		<div class="post-images-single">
-			<img src={images[0]} alt="Post attachment" class="post-image-single" loading="lazy" />
+		<div class="mb-2">
+			<img
+				src={images[0]}
+				alt="Post attachment"
+				class="block max-h-100 w-full rounded-xl border border-[#1f1f1f] object-cover"
+				loading="lazy"
+			/>
 		</div>
 	{/if}
 
-	<div class="post-actions">
-		<button class="action-btn" aria-label="Comment">
+	<div class="mt-2 flex items-center gap-6">
+		<button
+			class="flex cursor-pointer items-center gap-1.5 rounded border-none bg-none p-1 text-[0.8rem] text-[#6b7280] transition-colors hover:text-[#9ca3af]"
+			aria-label="Comment"
+		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				class="action-icon"
+				class="h-4 w-4"
 				fill="none"
 				viewBox="0 0 24 24"
 				stroke="currentColor"
@@ -77,10 +96,13 @@
 			<span>0</span>
 		</button>
 
-		<button class="action-btn" aria-label="Retweet">
+		<button
+			class="flex cursor-pointer items-center gap-1.5 rounded border-none bg-none p-1 text-[0.8rem] text-[#6b7280] transition-colors hover:text-[#22c55e]"
+			aria-label="Retweet"
+		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				class="action-icon"
+				class="h-4 w-4"
 				fill="none"
 				viewBox="0 0 24 24"
 				stroke="currentColor"
@@ -96,14 +118,15 @@
 		</button>
 
 		<button
-			class="action-btn"
-			class:action-like-active={is_liked}
+			class="flex cursor-pointer items-center gap-1.5 rounded border-none bg-none p-1 text-[0.8rem] transition-colors {is_liked
+				? 'text-[#f43f5e]'
+				: 'text-[#6b7280] hover:text-[#f43f5e]'}"
 			aria-label="Like"
 			onclick={on_like}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				class="action-icon"
+				class="h-4 w-4"
 				fill={is_liked ? 'currentColor' : 'none'}
 				viewBox="0 0 24 24"
 				stroke="currentColor"

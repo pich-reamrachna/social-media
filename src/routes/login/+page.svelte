@@ -16,7 +16,7 @@
 </script>
 
 <div
-	class="flex min-h-screen bg-[#0d0d0d] font-sans text-gray-100 selection:bg-pink-500 selection:text-white"
+	class="flex min-h-dvh flex-col bg-[#0d0d0d] font-sans text-gray-100 selection:bg-pink-500 selection:text-white lg:flex-row"
 >
 	<div
 		class="relative hidden flex-col justify-between bg-linear-to-br from-[#1a0f14] via-[#0d0d0d] to-[#0a0a0a] p-16 lg:flex lg:w-1/2"
@@ -55,14 +55,25 @@
 	</div>
 
 	<div
-		class="flex w-full flex-col items-center justify-center bg-[#111111] p-8 sm:p-12 lg:w-1/2 lg:p-24"
+		class="flex w-full flex-1 flex-col items-center justify-center overflow-y-auto bg-[#111111] px-7 py-8 sm:px-10 sm:py-12 lg:w-1/2 lg:px-12 lg:py-24"
 	>
+		<div class="mb-6 w-full max-w-md lg:hidden">
+			<h1
+				class="mb-2 bg-linear-to-br from-[#ff3377] to-[#ff7eb3] bg-clip-text text-4xl font-extrabold tracking-tighter text-transparent italic sm:text-5xl"
+			>
+				Y
+			</h1>
+			<p class="text-xs leading-relaxed tracking-[0.18em] text-gray-500 uppercase">
+				The Platform you didn't know existed.
+			</p>
+		</div>
+
 		<div class="w-full max-w-md">
-			<div class="mb-10">
-				<h2 class="mb-2 text-3xl font-semibold tracking-tight text-white">
+			<div class="mb-7 sm:mb-10">
+				<h2 class="mb-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
 					See What's Happening Today
 				</h2>
-				<p class="text-sm text-gray-400">
+				<p class="max-w-sm text-sm leading-relaxed text-gray-400">
 					Access your
 					<span
 						class="bg-linear-to-br from-[#ff3377] to-[#ff7eb3] bg-clip-text font-bold text-transparent italic"
@@ -72,7 +83,7 @@
 				</p>
 			</div>
 
-			<form method="POST" class="space-y-6">
+			<form method="POST" class="space-y-5 sm:space-y-6">
 				{#if form?.message}
 					<p
 						class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
@@ -84,7 +95,7 @@
 				<div>
 					<label
 						for="username"
-						class="mb-2 block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
+						class="mb-2 block text-[9px] font-medium tracking-[0.22em] text-gray-500 uppercase sm:text-[10px]"
 					>
 						Username
 					</label>
@@ -94,25 +105,19 @@
 						name="username"
 						bind:value={username}
 						placeholder="Enter your username"
-						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
+						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none sm:py-3.5"
 						required
 					/>
 				</div>
 
 				<div>
-					<div class="mb-2 flex items-center justify-between">
+					<div class="mb-2">
 						<label
 							for="password"
-							class="block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
+							class="block text-[9px] font-medium tracking-[0.22em] text-gray-500 uppercase sm:text-[10px]"
 						>
 							Password
 						</label>
-						<a
-							href={resolve('/login')}
-							class="text-[10px] font-medium tracking-widest text-[#ff5c8d] uppercase transition-colors hover:text-[#ff7eb3]"
-						>
-							Forgot Password?
-						</a>
 					</div>
 					<div class="relative">
 						<input
@@ -121,7 +126,7 @@
 							name="password"
 							bind:value={password}
 							placeholder="••••••••••••"
-							class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
+							class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none sm:py-3.5"
 							required
 						/>
 						<button
@@ -143,7 +148,12 @@
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
-										d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+										d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+									/>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
 									/>
 								</svg>
 							{:else}
@@ -158,20 +168,23 @@
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
-										d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-									/>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+										d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
 									/>
 								</svg>
 							{/if}
 						</button>
 					</div>
+					<div class="mt-2 flex justify-end">
+						<a
+							href={resolve('/login')}
+							class="text-[9px] font-medium tracking-[0.22em] text-[#ff5c8d] uppercase transition-colors hover:text-[#ff7eb3] sm:text-[10px]"
+						>
+							Forgot Password?
+						</a>
+					</div>
 				</div>
 
-				<div class="mt-4 flex items-center">
+				<div class="mt-4 flex items-center gap-3">
 					<div class="relative flex items-center">
 						<input
 							type="checkbox"
@@ -198,24 +211,24 @@
 					</div>
 					<label
 						for="should_remember_me"
-						class="ml-3 cursor-pointer text-sm text-gray-400 select-none"
+						class="cursor-pointer text-sm leading-relaxed text-gray-400 select-none"
 					>
 						Stay Logged In
 					</label>
 				</div>
 
-				<div class="pt-4">
+				<div class="pt-3 sm:pt-4">
 					<button
 						type="submit"
-						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99]"
+						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] sm:py-4"
 					>
 						Sign In
 					</button>
 				</div>
 			</form>
 
-			<div class="mt-12 text-center text-sm text-gray-500">
-				New to the Y?
+			<div class="mt-10 text-center text-sm text-gray-500 sm:mt-12">
+				New to Y?
 				<a
 					href={resolve('/register')}
 					class="ml-1 text-[#ff5c8d] transition-colors hover:text-[#ff7eb3]"
