@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
-	import { enhance } from '$app/forms'
 	import './SideNav.css'
 
 	type User = {
@@ -141,13 +140,7 @@
 
 			{#if is_settings_open}
 				<div class="side-nav-settings-menu">
-					<form
-						method="POST"
-						action="?/signOut"
-						use:enhance={() => {
-							on_settings_toggle?.()
-						}}
-					>
+					<form method="POST" action={resolve('/logout')}>
 						<button type="submit" class="side-nav-settings-action">Logout</button>
 					</form>
 				</div>
@@ -239,13 +232,7 @@
 
 {#if is_settings_open}
 	<div class="mobile-settings-menu">
-		<form
-			method="POST"
-			action="?/signOut"
-			use:enhance={() => {
-				on_settings_toggle?.()
-			}}
-		>
+		<form method="POST" action={resolve('/logout')}>
 			<button type="submit" class="mobile-settings-action">Logout</button>
 		</form>
 	</div>
