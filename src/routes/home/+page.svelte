@@ -292,15 +292,6 @@
 			/>
 		</div>
 
-		{#if is_settings_open}
-			<section class="settings-panel">
-				<h4>Settings</h4>
-				<ul>
-					<li><button type="button" class="settings-option">Logout</button></li>
-				</ul>
-			</section>
-		{/if}
-
 		{#if applied_keyword_search}
 			<section class="settings-panel">
 				<h4>Keyword Filter</h4>
