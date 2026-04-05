@@ -7,6 +7,14 @@
 	border: 1px solid #1f1f1f;
 	border-radius: 9999px;
 	position: relative;
+	transition:
+		border-color 0.15s ease,
+		box-shadow 0.15s ease;
+}
+
+.search-dropdown:focus-within {
+	border-color: #ff5c8d;
+	box-shadow: 0 0 0 1px #ff5c8d;
 }
 
 .search-dropdown-icon {
