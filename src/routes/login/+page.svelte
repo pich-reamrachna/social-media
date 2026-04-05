@@ -55,7 +55,7 @@
 	</div>
 
 	<div
-		class="flex w-full flex-1 flex-col items-center justify-center overflow-y-auto bg-[#111111] px-4 py-8 sm:px-6 sm:py-12 lg:w-1/2 lg:px-12 lg:py-24"
+		class="flex w-full flex-1 flex-col items-center justify-center overflow-y-auto bg-[#111111] px-7 py-8 sm:px-10 sm:py-12 lg:w-1/2 lg:px-12 lg:py-24"
 	>
 		<div class="mb-6 w-full max-w-md lg:hidden">
 			<h1
@@ -111,19 +111,13 @@
 				</div>
 
 				<div>
-					<div class="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+					<div class="mb-2">
 						<label
 							for="password"
 							class="block text-[9px] font-medium tracking-[0.22em] text-gray-500 uppercase sm:text-[10px]"
 						>
 							Password
 						</label>
-						<a
-							href={resolve('/login')}
-							class="text-[9px] font-medium tracking-[0.22em] text-[#ff5c8d] uppercase transition-colors hover:text-[#ff7eb3] sm:text-[10px]"
-						>
-							Forgot Password?
-						</a>
 					</div>
 					<div class="relative">
 						<input
@@ -179,6 +173,14 @@
 								</svg>
 							{/if}
 						</button>
+					</div>
+					<div class="mt-2 flex justify-end">
+						<a
+							href={resolve('/login')}
+							class="text-[9px] font-medium tracking-[0.22em] text-[#ff5c8d] uppercase transition-colors hover:text-[#ff7eb3] sm:text-[10px]"
+						>
+							Forgot Password?
+						</a>
 					</div>
 				</div>
 
