@@ -137,7 +137,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const who_to_follow = who_to_follow_rows.map((suggested_user) => ({
 		name: suggested_user.name,
-		handle: suggested_user.username,
+		handle: suggested_user.username ?? suggested_user.name.toLowerCase().replace(/\s+/g, '_'),
 		avatar_url: suggested_user.image || `https://i.pravatar.cc/150?u=${suggested_user.id}`
 	}))
 
