@@ -16,6 +16,10 @@ cloudinary.config({
 })
 
 async function upload_cloudinary(file: File, folder: string) {
+	const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 // 5MB
+	if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
+		throw new Error('Invalid file size')
+	}
 	const array_buffer = await file.arrayBuffer()
 	const buffer = Buffer.from(array_buffer)
 
