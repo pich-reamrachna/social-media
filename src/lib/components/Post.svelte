@@ -4,6 +4,7 @@
 	const {
 		name,
 		handle,
+		avatar_url,
 		content,
 		images = [],
 		likes,
@@ -13,6 +14,7 @@
 	}: {
 		name: string
 		handle: string
+		avatar_url?: string
 		content: string
 		images?: string[]
 		likes: number
@@ -41,15 +43,30 @@
 </script>
 
 <article class="cursor-pointer border-b border-[#1f1f1f] p-5 transition-colors hover:bg-white/5">
-	<div class="mb-3">
-		<div class="flex flex-col gap-0.5">
+	<div class="mb-3 flex items-center gap-3">
+		<a
+			href={resolve(`/profile/${handle}`)}
+			class="shrink-0 text-inherit no-underline"
+			aria-label={`Open ${name}'s profile`}
+		>
+			<img
+				src={avatar_url || `https://i.pravatar.cc/150?u=${handle}`}
+				alt={name}
+				class="h-10 w-10 rounded-full bg-[#1f1f1f] object-cover"
+				loading="lazy"
+			/>
+		</a>
+
+		<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 			<div class="flex flex-wrap items-center gap-1.5">
 				<a
 					href={resolve(`/profile/${handle}`)}
-					class="group flex items-center gap-1.5 text-inherit no-underline"
+					class="group flex min-w-0 items-center gap-1.5 text-inherit no-underline"
 				>
-					<span class="text-[0.9rem] font-bold text-[#f3f4f6] group-hover:underline">{name}</span>
-					<span class="text-[0.8rem] text-[#6b7280]">@{handle}</span>
+					<span class="truncate text-[0.9rem] font-bold text-[#f3f4f6] group-hover:underline"
+						>{name}</span
+					>
+					<span class="truncate text-[0.8rem] text-[#6b7280]">@{handle}</span>
 				</a>
 				<span class="text-[0.8rem] text-[#6b7280]">·</span>
 				<span class="text-[0.8rem] text-[#6b7280]">{format_time(timestamp)}</span>
