@@ -30,6 +30,7 @@
 	let is_settings_open = $state(false)
 	let post_draft = $state('')
 	let composer_form: HTMLFormElement | undefined = $state(undefined)
+	let composer_image_input: HTMLInputElement | undefined = $state(undefined)
 	let selected_image_name = $state('')
 	let selected_image_preview = $state<string | undefined>(undefined)
 	const liked_posts = $state<Record<string, boolean>>({})
@@ -342,6 +343,7 @@
 					class="composer-input"
 				/>
 				<input
+					bind:this={composer_image_input}
 					id="composer-image"
 					type="file"
 					name="image"
@@ -366,7 +368,12 @@
 				{/if}
 				<div class="composer-actions">
 					<div class="composer-media-btns">
-						<label for="composer-image" class="media-btn" aria-label="Add image">
+						<button
+							type="button"
+							class="media-btn"
+							aria-label="Add image"
+							onclick={() => composer_image_input?.click()}
+						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								class="media-icon"
@@ -381,7 +388,7 @@
 									d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
 								/>
 							</svg>
-						</label>
+						</button>
 					</div>
 					<button
 						type="submit"
