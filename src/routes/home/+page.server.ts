@@ -1,8 +1,9 @@
 import { db } from '$lib/server/db'
+import { user as user_table } from '$lib/server/db/auth.schema'
 import { post } from '$lib/server/db/post'
 import { like } from '$lib/server/db/interactions'
 import { fail, redirect } from '@sveltejs/kit'
-import { desc, and, eq, inArray, sql } from 'drizzle-orm'
+import { desc, and, eq, inArray, ne, sql } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
@@ -122,19 +123,23 @@ export const load: PageServerLoad = async ({ locals }) => {
 		{ category: 'MUSIC · TRENDING', tag: 'Synthetix Core', count: '8.1K' }
 	]
 
-	// for now, just return some dummy data for who to follow
-	const who_to_follow = [
-		{
-			name: 'Billie Eilish',
-			handle: 'billieeilish',
-			avatar_url: 'https://i.pravatar.cc/150?img=5'
-		},
-		{
-			name: 'Bad Bunny',
-			handle: 'badbunnypr',
-			avatar_url: 'https://i.pravatar.cc/150?img=60'
-		}
-	]
+	const who_to_follow_rows = await db
+		.select({
+			id: user_table.id,
+			name: user_table.name,
+			username: user_table.username,
+			image: user_table.image
+		})
+		.from(user_table)
+		.where(ne(user_table.id, user.id))
+		.orderBy(desc(user_table.createdAt))
+		.limit(5)
+
+	const who_to_follow = who_to_follow_rows.map((suggested_user) => ({
+		name: suggested_user.name,
+		handle: suggested_user.username,
+		avatar_url: suggested_user.image || `https://i.pravatar.cc/150?u=${suggested_user.id}`
+	}))
 
 	return {
 		current_user: {
