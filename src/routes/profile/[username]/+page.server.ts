@@ -2,6 +2,11 @@ import { db } from '$lib/server/db'
 import { user } from '$lib/server/db/auth.schema'
 import { post } from '$lib/server/db/post'
 import { like } from '$lib/server/db/interactions'
+import {
+	consume_rate_limit,
+	get_rate_limit_error,
+	get_rate_limit_subject
+} from '$lib/server/rate-limit'
 import { dev } from '$app/environment'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
@@ -9,6 +14,7 @@ import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_POSTS_LIMIT = 20
 const PROFILE_LIKED_POSTS_LIMIT = 20
+const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
 
 const log_dev_duration = (label: string, started_at: number) => {
 	if (dev) {
@@ -206,6 +212,14 @@ export const actions: Actions = {
 		const viewer = locals.user
 		if (!viewer) {
 			return fail(401, { message: 'Unauthorized' })
+		}
+
+		const rate_limit = consume_rate_limit({
+			key: `toggle-like:${get_rate_limit_subject(locals)}`,
+			...TOGGLE_LIKE_LIMIT
+		})
+		if (!rate_limit.ok) {
+			return fail(429, get_rate_limit_error(rate_limit.retryAfterSeconds))
 		}
 
 		const form_data = await request.formData()

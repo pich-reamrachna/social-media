@@ -1,12 +1,19 @@
 import { db } from '$lib/server/db'
 import { post } from '$lib/server/db/post'
 import { like } from '$lib/server/db/interactions'
+import {
+	consume_rate_limit,
+	get_rate_limit_error,
+	get_rate_limit_subject
+} from '$lib/server/rate-limit'
 import { fail, redirect } from '@sveltejs/kit'
 import { desc, and, eq, inArray, sql } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 const UPLOAD_TIMEOUT_MS = 30_000
+const CREATE_POST_LIMIT = { limit: 5, windowMs: 60_000 }
+const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
 
 type UploadedPostImage = {
 	url: string
@@ -172,6 +179,14 @@ export const actions: Actions = {
 			return fail(401, { message: 'Unauthorized' })
 		}
 
+		const rate_limit = consume_rate_limit({
+			key: `create-post:${get_rate_limit_subject(locals)}`,
+			...CREATE_POST_LIMIT
+		})
+		if (!rate_limit.ok) {
+			return fail(429, get_rate_limit_error(rate_limit.retryAfterSeconds))
+		}
+
 		const form_data = await request.formData()
 		const payload = get_post_payload(form_data)
 		if ('error' in payload) {
@@ -202,6 +217,14 @@ export const actions: Actions = {
 		const user = locals.user
 		if (!user) {
 			return fail(401)
+		}
+
+		const rate_limit = consume_rate_limit({
+			key: `toggle-like:${get_rate_limit_subject(locals)}`,
+			...TOGGLE_LIKE_LIMIT
+		})
+		if (!rate_limit.ok) {
+			return fail(429, get_rate_limit_error(rate_limit.retryAfterSeconds))
 		}
 
 		const form_data = await request.formData()

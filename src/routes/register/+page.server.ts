@@ -2,8 +2,11 @@
 import { fail, redirect } from '@sveltejs/kit'
 import { APIError } from 'better-auth/api'
 import { auth } from '$lib/server/auth'
+import { consume_rate_limit, get_rate_limit_error } from '$lib/server/rate-limit'
 import type { Actions, PageServerLoad } from './$types'
 import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
+
+const REGISTER_LIMIT = { limit: 3, windowMs: 60_000 }
 
 const get_string = (formData: FormData, key: string) => {
 	const value = formData.get(key)
@@ -30,6 +33,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	default: async (event) => {
+		const rate_limit = consume_rate_limit({
+			key: `register:${event.locals.clientAddress ?? 'unknown'}`,
+			...REGISTER_LIMIT
+		})
+		if (!rate_limit.ok) {
+			return fail(
+				429,
+				get_rate_limit_error(rate_limit.retryAfterSeconds, 'Too many registration attempts.')
+			)
+		}
+
 		const form_data = await event.request.formData()
 		const username = get_string(form_data, 'username')
 		const email = get_string(form_data, 'email')

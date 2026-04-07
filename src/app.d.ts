@@ -5,6 +5,7 @@ import type { User, Session } from 'better-auth/minimal'
 declare global {
 	namespace App {
 		interface Locals {
+			clientAddress?: string
 			user?: User
 			session?: Session
 		}
