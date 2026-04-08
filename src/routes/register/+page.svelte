@@ -58,9 +58,9 @@
 			return
 		}
 
-		if (!/^[A-Za-z0-9._]+$/.test(trimmed)) {
+		if (!/^[a-z0-9._]+$/.test(trimmed)) {
 			username_status = 'error'
-			username_message = 'Username allow only alphanumeric, dots, and underscores'
+			username_message = 'Username allows only lowercase letters, numbers, dots, and underscores'
 			return
 		}
 
