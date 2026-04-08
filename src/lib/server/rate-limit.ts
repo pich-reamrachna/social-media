@@ -65,8 +65,13 @@ const get_rate_limit_window = (windowMs: number, now: number): RateLimitWindow =
 	}
 }
 
-const cleanup_expired_rate_limits = async (key: string, now: Date): Promise<void> => {
-	await db.delete(rate_limit).where(and(eq(rate_limit.key, key), lte(rate_limit.resetAt, now)))
+export const cleanup_expired_rate_limits = async (now: Date): Promise<number> => {
+	const deleted_rows = await db
+		.delete(rate_limit)
+		.where(lte(rate_limit.resetAt, now))
+		.returning({ key: rate_limit.key })
+
+	return deleted_rows.length
 }
 
 const get_rate_limit_entry = async (
@@ -144,8 +149,6 @@ const get_rate_limit_status = async ({
 	const now = Date.now()
 	const window = get_rate_limit_window(windowMs, now)
 	try {
-		await cleanup_expired_rate_limits(key, new Date(now))
-
 		const current_entry = await get_rate_limit_entry(key, window.window_id)
 
 		if (current_entry && current_entry.count >= limit) {

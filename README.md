@@ -38,6 +38,9 @@ ORIGIN="http://localhost:5173"
 
 # Better Auth secret
 BETTER_AUTH_SECRET="replace-with-a-long-random-secret"
+
+# Secret used to authorize the Vercel cron cleanup endpoint
+CRON_SECRET="replace-with-a-long-random-secret"
 ```
 
 Notes:
@@ -57,6 +60,11 @@ pnpm run db:push
 
 The rate limiter now stores shared counters in Neon/Postgres as well, so run `pnpm run db:push`
 after pulling the latest schema changes.
+
+Expired rate-limit rows are cleaned up globally by a Vercel cron job configured in
+`vercel.json`. The cron calls `/api/cron/rate-limit-cleanup` every hour and the route
+deletes rows where `reset_at <= now()`. Set `CRON_SECRET` in Vercel so the cron request
+can authenticate to that endpoint.
 
 Useful database commands:
 
