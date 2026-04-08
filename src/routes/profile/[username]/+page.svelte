@@ -5,6 +5,7 @@
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import '../../home/home.css'
+	import '$lib/components/RightSidebar.css'
 
 	import type { PageData } from './$types'
 	const { data }: { data: PageData } = $props()
