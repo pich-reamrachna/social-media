@@ -29,7 +29,8 @@
 			"picomatch": "^4.0.4",
 			"smol-toml": "^1.6.1",
 			"camelcase": "5",
-			"defu": "^6.1.5"
+			"defu": "^6.1.5",
+			"drizzle-orm": "^0.45.2"
 		}
 	},
 	"scripts": {
@@ -123,6 +124,7 @@
 	"dependencies": {
 		"@better-auth/infra": "^0.1.13",
 		"@better-auth/sso": "1.4.22",
-		"cloudinary": "^2.9.0"
+		"cloudinary": "^2.9.0",
+		"social-media": "link:"
 	}
 }
