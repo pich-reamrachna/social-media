@@ -55,6 +55,9 @@ pnpm run auth:schema
 pnpm run db:push
 ```
 
+The rate limiter now stores shared counters in Neon/Postgres as well, so run `pnpm run db:push`
+after pulling the latest schema changes.
+
 Useful database commands:
 
 ```sh

@@ -20,3 +20,4 @@ export const user_relations = relations(auth.user, ({ many }) => ({
 export * from './auth.schema.js'
 export * from './post.js'
 export * from './interactions.js'
+export * from './rate-limit.js'

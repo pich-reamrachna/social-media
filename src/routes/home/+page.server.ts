@@ -179,7 +179,7 @@ export const actions: Actions = {
 			return fail(401, { message: 'Unauthorized' })
 		}
 
-		const rate_limit = consume_rate_limit({
+		const rate_limit = await consume_rate_limit({
 			key: `create-post:${get_rate_limit_subject(locals)}`,
 			...CREATE_POST_LIMIT
 		})
@@ -219,7 +219,7 @@ export const actions: Actions = {
 			return fail(401)
 		}
 
-		const rate_limit = consume_rate_limit({
+		const rate_limit = await consume_rate_limit({
 			key: `toggle-like:${get_rate_limit_subject(locals)}`,
 			...TOGGLE_LIKE_LIMIT
 		})

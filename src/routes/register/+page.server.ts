@@ -33,7 +33,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	default: async (event) => {
-		const rate_limit = consume_rate_limit({
+		const rate_limit = await consume_rate_limit({
 			key: `register:${event.locals.clientAddress ?? 'unknown'}`,
 			...REGISTER_LIMIT
 		})
