@@ -25,12 +25,44 @@ const should_load_session = (pathname: string) => {
 	return false
 }
 
+const get_first_forwarded_address = (value: string | null) => {
+	if (!value) return undefined
+
+	const [first_address] = value.split(',')
+	return first_address?.trim() || undefined
+}
+
+const get_client_address = (event: Parameters<Handle>[0]['event']) => {
+	const vercel_forwarded_for = get_first_forwarded_address(
+		event.request.headers.get('x-vercel-forwarded-for')
+	)
+	if (vercel_forwarded_for) return vercel_forwarded_for
+
+	const forwarded_for = get_first_forwarded_address(event.request.headers.get('x-forwarded-for'))
+	if (forwarded_for) return forwarded_for
+
+	const real_ip = event.request.headers.get('x-real-ip')
+	if (real_ip) {
+		return real_ip.trim()
+	}
+
+	try {
+		return event.getClientAddress()
+	} catch {
+		return undefined
+	}
+}
+
 const handle_better_auth: Handle = async ({ event, resolve }) => {
 	const request_label = `${event.request.method} ${event.url.pathname}`
 	const request_started_at = dev ? performance.now() : 0
 	const { url: normalized_url } = normalizeUrl(event.url)
 	const pathname = normalized_url.pathname
 	const cookie_header = event.request.headers.get('cookie') ?? ''
+	const client_address = get_client_address(event)
+	if (client_address) {
+		event.locals.clientAddress = client_address
+	}
 
 	if (should_load_session(pathname)) {
 		if (dev) {
