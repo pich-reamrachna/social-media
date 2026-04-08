@@ -136,7 +136,7 @@ export const get_rate_limit_error = (
 	message: `${message} Try again in ${retry_after_seconds} seconds.`
 })
 
-export const consume_rate_limit = async ({
+const get_rate_limit_status = async ({
 	key,
 	limit,
 	windowMs
@@ -155,6 +155,40 @@ export const consume_rate_limit = async ({
 				reset_at: current_entry.reset_at,
 				retryAfterSeconds: get_retry_after_seconds(current_entry.reset_at, now)
 			}
+		}
+
+		return {
+			ok: true,
+			remaining: limit - (current_entry?.count ?? 0),
+			reset_at: current_entry?.reset_at ?? window.reset_at,
+			retryAfterSeconds: 0
+		}
+	} catch (error) {
+		console.error('[rate-limit] Failed to read rate limit', { key, error })
+
+		return {
+			ok: true,
+			remaining: limit,
+			reset_at: window.reset_at,
+			retryAfterSeconds: 0
+		}
+	}
+}
+
+export const peek_rate_limit = get_rate_limit_status
+
+export const consume_rate_limit = async ({
+	key,
+	limit,
+	windowMs
+}: RateLimitOptions): Promise<RateLimitResult> => {
+	const now = Date.now()
+	const window = get_rate_limit_window(windowMs, now)
+	try {
+		const current_status = await get_rate_limit_status({ key, limit, windowMs })
+
+		if (!current_status.ok) {
+			return current_status
 		}
 
 		const next_entry = await increment_rate_limit(key, window)

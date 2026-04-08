@@ -2,7 +2,7 @@
 import { fail, redirect } from '@sveltejs/kit'
 import { APIError } from 'better-auth/api'
 import { auth } from '$lib/server/auth'
-import { consume_rate_limit, get_rate_limit_error } from '$lib/server/rate-limit'
+import { consume_rate_limit, get_rate_limit_error, peek_rate_limit } from '$lib/server/rate-limit'
 import type { Actions, PageServerLoad } from './$types'
 import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
@@ -27,14 +27,31 @@ const validate_password_strength = (password: string) => {
 	return errors
 }
 
+const get_register_rate_limit_failure = async (
+	consume_failed_attempt: () => ReturnType<typeof consume_rate_limit>
+) => {
+	const failed_attempt_rate_limit = await consume_failed_attempt()
+
+	return failed_attempt_rate_limit.ok
+		? undefined
+		: fail(
+				429,
+				get_rate_limit_error(
+					failed_attempt_rate_limit.retryAfterSeconds,
+					'Too many registration attempts.'
+				)
+			)
+}
+
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) throw redirect(302, '/home')
 }
 
 export const actions: Actions = {
 	default: async (event) => {
-		const rate_limit = await consume_rate_limit({
-			key: `register:${event.locals.clientAddress ?? 'unknown'}`,
+		const rate_limit_key = `register:${event.locals.clientAddress ?? 'unknown'}`
+		const rate_limit = await peek_rate_limit({
+			key: rate_limit_key,
 			...REGISTER_LIMIT
 		})
 		if (!rate_limit.ok) {
@@ -49,9 +66,17 @@ export const actions: Actions = {
 		const email = get_string(form_data, 'email')
 		const password = get_string(form_data, 'password')
 		const confirm_password = get_string(form_data, 'confirm_password')
+		const consume_failed_attempt = async () =>
+			consume_rate_limit({
+				key: rate_limit_key,
+				...REGISTER_LIMIT
+			})
 
 		const password_strength_errors = validate_password_strength(password)
 		if (password_strength_errors.length > 0) {
+			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
+			if (rate_limit_failure) return rate_limit_failure
+
 			return fail(400, {
 				message: `Password must include ${password_strength_errors.join(', ')}`,
 				username,
@@ -60,6 +85,9 @@ export const actions: Actions = {
 		}
 
 		if (password !== confirm_password) {
+			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
+			if (rate_limit_failure) return rate_limit_failure
+
 			return fail(400, { message: 'Passwords do not match', username, email })
 		}
 
@@ -73,10 +101,14 @@ export const actions: Actions = {
 				}
 			})
 		} catch (error) {
-			if (error instanceof APIError) {
-				return fail(400, { message: error.message, username, email })
+			if (!(error instanceof APIError)) {
+				return fail(500, { message: 'Unexpected error', username, email })
 			}
-			return fail(500, { message: 'Unexpected error', username, email })
+
+			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
+			if (rate_limit_failure) return rate_limit_failure
+
+			return fail(400, { message: error.message, username, email })
 		}
 
 		throw redirect(302, '/login')
