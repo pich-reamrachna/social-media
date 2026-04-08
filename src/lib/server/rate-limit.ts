@@ -42,6 +42,11 @@ type RateLimitWindow = {
 	reset_at_date: Date
 }
 
+type RateLimitContext = {
+	now: number
+	window: RateLimitWindow
+}
+
 const get_reset_at_timestamp = (value: unknown, fallback: number) => {
 	if (value instanceof Date) {
 		return value.getTime()
@@ -141,13 +146,10 @@ export const get_rate_limit_error = (
 	message: `${message} Try again in ${retry_after_seconds} seconds.`
 })
 
-const get_rate_limit_status = async ({
-	key,
-	limit,
-	windowMs
-}: RateLimitOptions): Promise<RateLimitResult> => {
-	const now = Date.now()
-	const window = get_rate_limit_window(windowMs, now)
+const get_rate_limit_status = async (
+	{ key, limit }: RateLimitOptions,
+	{ now, window }: RateLimitContext
+): Promise<RateLimitResult> => {
 	try {
 		const current_entry = await get_rate_limit_entry(key, window.window_id)
 
@@ -178,7 +180,12 @@ const get_rate_limit_status = async ({
 	}
 }
 
-export const peek_rate_limit = get_rate_limit_status
+export const peek_rate_limit = async (options: RateLimitOptions): Promise<RateLimitResult> => {
+	const now = Date.now()
+	const window = get_rate_limit_window(options.windowMs, now)
+
+	return get_rate_limit_status(options, { now, window })
+}
 
 export const consume_rate_limit = async ({
 	key,
@@ -188,7 +195,7 @@ export const consume_rate_limit = async ({
 	const now = Date.now()
 	const window = get_rate_limit_window(windowMs, now)
 	try {
-		const current_status = await get_rate_limit_status({ key, limit, windowMs })
+		const current_status = await get_rate_limit_status({ key, limit, windowMs }, { now, window })
 
 		if (!current_status.ok) {
 			return current_status
