@@ -11,8 +11,8 @@ const plugins = [
 	username({
 		minUsernameLength: MIN_USERNAME_LENGTH,
 		maxUsernameLength: MAX_USERNAME_LENGTH,
-		usernameNormalization: false,
-		usernameValidator: (username) => /^[A-Za-z0-9._]+$/.test(username)
+		usernameNormalization: (username) => username.toLowerCase(),
+		usernameValidator: (username) => /^[a-z0-9._]+$/.test(username)
 	}),
 	sveltekitCookies(getRequestEvent)
 ]
