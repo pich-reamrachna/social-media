@@ -29,9 +29,6 @@ importers:
       cloudinary:
         specifier: ^2.9.0
         version: 2.9.0
-      social-media:
-        specifier: 'link:'
-        version: 'link:'
     devDependencies:
       '@better-auth/cli':
         specifier: ~1.4.22
