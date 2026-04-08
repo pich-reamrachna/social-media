@@ -2,6 +2,8 @@
 
 SvelteKit app/library scaffold with Better Auth, Drizzle ORM, Neon Postgres, Playwright, and Lefthook.
 
+This line is committed for testing.
+
 ## Requirements
 
 - Node.js `22.x`
