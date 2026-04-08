@@ -64,9 +64,9 @@ The rate limiter now stores shared counters in Neon/Postgres as well, so run `pn
 after pulling the latest schema changes.
 
 Expired rate-limit rows are cleaned up globally by a Vercel cron job configured in
-`vercel.json`. The cron calls `/api/cron/rate-limit-cleanup` every hour and the route
-deletes rows where `reset_at <= now()`. Set `CRON_SECRET` in Vercel so the cron request
-can authenticate to that endpoint.
+`vercel.json`. On the Hobby plan the cron calls `/api/cron/rate-limit-cleanup` once per day,
+and the route deletes rows where `reset_at <= now()`. Set `CRON_SECRET` in Vercel so the
+cron request can authenticate to that endpoint.
 
 Useful database commands:
 
