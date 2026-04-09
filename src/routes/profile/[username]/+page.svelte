@@ -5,6 +5,7 @@
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import '../../home/home.css'
+	import '$lib/components/RightSidebar.css'
 
 	import type { PageData } from './$types'
 	const { data }: { data: PageData } = $props()
@@ -180,10 +181,11 @@
 			</div>
 		</header>
 
-		<div
-			class="h-48 w-full bg-[#111] bg-cover bg-center"
-			style="background-image: url('{data.profile.banner_url}');"
-		></div>
+		<div class="h-48 w-full overflow-hidden bg-[#111]">
+			{#if data.profile.banner_url}
+				<img src={data.profile.banner_url} alt="" class="h-full w-full object-cover" />
+			{/if}
+		</div>
 
 		<div class="relative flex items-start justify-between px-4">
 			<img
