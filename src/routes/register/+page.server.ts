@@ -7,7 +7,8 @@ import type { Actions, PageServerLoad } from './$types'
 import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
 const REGISTER_LIMIT = { limit: 3, windowMs: 60_000 }
-const GENERIC_REGISTER_ERROR = 'Unable to create account with those credentials'
+const DUPLICATE_ACCOUNT_ERROR = 'Account already exists'
+const DUPLICATE_USERNAME_ERROR = 'Username already taken'
 
 const get_string = (formData: FormData, key: string) => {
 	const value = formData.get(key)
@@ -26,6 +27,17 @@ const validate_password_strength = (password: string) => {
 	if (!/[^A-Za-z0-9]/.test(password)) errors.push('one special character')
 
 	return errors
+}
+
+const get_register_error_message = (error_message: string | undefined) => {
+	const normalized_error = error_message?.toLowerCase() || ''
+
+	// Keep email-related failures generic for privacy, including mixed username+email conflicts.
+	if (normalized_error.includes('email')) {
+		return DUPLICATE_ACCOUNT_ERROR
+	}
+
+	return normalized_error.includes('username') ? DUPLICATE_USERNAME_ERROR : DUPLICATE_ACCOUNT_ERROR
 }
 
 const get_register_rate_limit_failure = async (
@@ -109,7 +121,11 @@ export const actions: Actions = {
 			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
 			if (rate_limit_failure) return rate_limit_failure
 
-			return fail(400, { message: GENERIC_REGISTER_ERROR, username, email })
+			return fail(400, {
+				message: get_register_error_message(error.message),
+				username,
+				email
+			})
 		}
 
 		throw redirect(302, '/login')
