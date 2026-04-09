@@ -4,6 +4,15 @@ import { building, dev } from '$app/environment'
 import { auth } from '$lib/server/auth'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 
+const SECURITY_HEADERS = {
+	'X-Frame-Options': 'DENY',
+	'Referrer-Policy': 'strict-origin-when-cross-origin',
+	'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+	'Cross-Origin-Opener-Policy': 'same-origin',
+	'Cross-Origin-Resource-Policy': 'same-origin',
+	'X-Content-Type-Options': 'nosniff'
+} as const
+
 const AUTH_ROUTES = new Set(['/login', '/register'])
 const PROTECTED_ROUTE_PREFIXES = ['/home', '/explore', '/notifications', '/messages', '/profile']
 
@@ -53,17 +62,24 @@ const get_client_address = (event: Parameters<Handle>[0]['event']) => {
 	}
 }
 
-const handle_better_auth: Handle = async ({ event, resolve }) => {
-	const request_label = `${event.request.method} ${event.url.pathname}`
-	const request_started_at = dev ? performance.now() : 0
-	const { url: normalized_url } = normalizeUrl(event.url)
-	const pathname = normalized_url.pathname
-	const cookie_header = event.request.headers.get('cookie') ?? ''
-	const client_address = get_client_address(event)
-	if (client_address) {
-		event.locals.clientAddress = client_address
+const apply_security_headers = (response: Response, url: URL) => {
+	for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
+		if (!response.headers.has(header)) {
+			response.headers.set(header, value)
+		}
 	}
 
+	if (url.protocol === 'https:' && !response.headers.has('Strict-Transport-Security')) {
+		response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+	}
+}
+
+const load_session_if_needed = async (
+	event: Parameters<Handle>[0]['event'],
+	pathname: string,
+	request_label: string,
+	cookie_header: string
+) => {
 	if (should_load_session(pathname)) {
 		if (dev) {
 			console.info(
@@ -86,8 +102,23 @@ const handle_better_auth: Handle = async ({ event, resolve }) => {
 	} else if (dev) {
 		console.info(`[auth] skipped getSession for ${request_label}`)
 	}
+}
+
+const handle_better_auth: Handle = async ({ event, resolve }) => {
+	const request_label = `${event.request.method} ${event.url.pathname}`
+	const request_started_at = dev ? performance.now() : 0
+	const { url: normalized_url } = normalizeUrl(event.url)
+	const pathname = normalized_url.pathname
+	const cookie_header = event.request.headers.get('cookie') ?? ''
+	const client_address = get_client_address(event)
+	if (client_address) {
+		event.locals.clientAddress = client_address
+	}
+
+	await load_session_if_needed(event, pathname, request_label, cookie_header)
 
 	const response = await svelteKitHandler({ event, resolve, auth, building })
+	apply_security_headers(response, event.url)
 
 	if (dev) {
 		const set_cookie = response.headers.get('set-cookie')
