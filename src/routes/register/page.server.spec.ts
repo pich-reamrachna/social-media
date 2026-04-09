@@ -96,7 +96,7 @@ describe('register actions', () => {
 		expect(mocks.sign_up_email).not.toHaveBeenCalled()
 	})
 
-	it('returns a generic message when sign up fails on existing credentials', async () => {
+	it('returns a specific message when sign up fails on duplicate username only', async () => {
 		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Username already exists'))
 
 		const { actions } = await import('./+page.server')
@@ -113,7 +113,55 @@ describe('register actions', () => {
 		expect(result).toMatchObject({
 			status: 400,
 			data: {
-				message: 'Unable to create account with those credentials',
+				message: 'Username already taken',
+				username: 'existing-user',
+				email: 'existing@example.com'
+			}
+		})
+	})
+
+	it('returns a generic message when sign up fails on duplicate email', async () => {
+		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Email already exists'))
+
+		const { actions } = await import('./+page.server')
+		const default_action = actions.default!
+		const result = await default_action(
+			create_event({
+				username: 'new-user',
+				email: 'existing@example.com',
+				password: 'ValidPassword1!',
+				confirm_password: 'ValidPassword1!'
+			}) as never
+		)
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: {
+				message: 'Account already exists',
+				username: 'new-user',
+				email: 'existing@example.com'
+			}
+		})
+	})
+
+	it('returns a generic message when sign up fails on duplicate username and email', async () => {
+		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Username and email already exist'))
+
+		const { actions } = await import('./+page.server')
+		const default_action = actions.default!
+		const result = await default_action(
+			create_event({
+				username: 'existing-user',
+				email: 'existing@example.com',
+				password: 'ValidPassword1!',
+				confirm_password: 'ValidPassword1!'
+			}) as never
+		)
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: {
+				message: 'Account already exists',
 				username: 'existing-user',
 				email: 'existing@example.com'
 			}
