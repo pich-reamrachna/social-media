@@ -5,6 +5,7 @@ import { consume_rate_limit, get_rate_limit_error, peek_rate_limit } from '$lib/
 import type { Actions, PageServerLoad } from './$types'
 
 const LOGIN_LIMIT = { limit: 5, windowMs: 60_000 }
+const GENERIC_LOGIN_ERROR = 'Invalid username or password'
 
 const get_string = (formData: FormData, key: string) => {
 	const value = formData.get(key)
@@ -86,7 +87,7 @@ export const actions: Actions = {
 			const rate_limit_failure = await get_login_rate_limit_failure(rate_limit_keys)
 			if (rate_limit_failure) return rate_limit_failure
 
-			return fail(400, { message: error.message, username })
+			return fail(400, { message: GENERIC_LOGIN_ERROR, username })
 		}
 
 		return redirect(302, '/home')

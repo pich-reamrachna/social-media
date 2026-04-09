@@ -7,6 +7,7 @@ import type { Actions, PageServerLoad } from './$types'
 import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
 const REGISTER_LIMIT = { limit: 3, windowMs: 60_000 }
+const GENERIC_REGISTER_ERROR = 'Unable to create account with those credentials'
 
 const get_string = (formData: FormData, key: string) => {
 	const value = formData.get(key)
@@ -108,7 +109,7 @@ export const actions: Actions = {
 			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
 			if (rate_limit_failure) return rate_limit_failure
 
-			return fail(400, { message: error.message, username, email })
+			return fail(400, { message: GENERIC_REGISTER_ERROR, username, email })
 		}
 
 		throw redirect(302, '/login')
