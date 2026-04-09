@@ -17,6 +17,7 @@ const config = {
 				'img-src': [
 					'self',
 					'data:',
+					'blob:',
 					'https://res.cloudinary.com',
 					'https://i.pravatar.cc',
 					'https://images.unsplash.com'
