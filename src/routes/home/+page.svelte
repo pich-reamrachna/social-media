@@ -49,6 +49,17 @@
 		visible: false
 	})
 
+	// Character limit constants
+	const MAX_POST_LENGTH = 280
+
+	// Reactive character count
+	// eslint-disable-next-line prefer-const
+	let character_count = $derived(post_draft.length)
+	// eslint-disable-next-line prefer-const
+	let remaining_chars = $derived(Math.max(0, MAX_POST_LENGTH - character_count))
+	// eslint-disable-next-line prefer-const
+	let is_over_limit = $derived(character_count > MAX_POST_LENGTH)
+
 	async function toggle_like(post_id: string) {
 		const post = data.posts.find((p: FeedPost) => p.id === post_id)
 		if (!post) return
@@ -335,13 +346,21 @@
 				class="composer-avatar"
 			/>
 			<div class="composer-body">
-				<input
-					type="text"
+				<textarea
 					name="content"
 					bind:value={post_draft}
 					placeholder="What's happening?"
 					class="composer-input"
-				/>
+					rows="3"
+					maxlength={MAX_POST_LENGTH}
+				></textarea>
+				<div class="composer-footer">
+					{#if post_draft.trim()}
+						<div class="character-counter" class:over-limit={is_over_limit}>
+							{remaining_chars}
+						</div>
+					{/if}
+				</div>
 				<input
 					bind:this={composer_image_input}
 					id="composer-image"
@@ -393,7 +412,9 @@
 					<button
 						type="submit"
 						class="submit-post-btn"
-						disabled={(!post_draft.trim() && !selected_image_preview) || is_posting}
+						disabled={(!post_draft.trim() && !selected_image_preview) ||
+							is_posting ||
+							is_over_limit}
 					>
 						{is_posting ? 'Posting...' : 'Post'}
 					</button>
