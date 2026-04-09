@@ -89,7 +89,7 @@ const get_image_mime_type = (buffer: Buffer) => {
 const validate_post_image = async (
 	file: File
 ): Promise<ValidatedImageUpload | { error: string }> => {
-	if (!file.type.startsWith('image/')) {
+	if (file.type && !file.type.startsWith('image/')) {
 		return { error: 'Only image uploads are supported' }
 	}
 
