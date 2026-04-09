@@ -75,7 +75,7 @@
 	</div>
 
 	<p
-		class="mb-3.5 ml-0 text-[0.9375rem] leading-relaxed whitespace-pre-wrap text-[#e5e7eb] sm:ml-0"
+		class="mb-3.5 ml-0 text-[0.9375rem] leading-relaxed break-words whitespace-pre-wrap text-[#e5e7eb] sm:ml-0"
 	>
 		{content}
 	</p>
