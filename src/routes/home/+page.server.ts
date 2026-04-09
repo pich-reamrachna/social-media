@@ -14,10 +14,16 @@ const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 const UPLOAD_TIMEOUT_MS = 30_000
 const CREATE_POST_LIMIT = { limit: 5, windowMs: 60_000 }
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
+const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
 type UploadedPostImage = {
 	url: string
 	public_id: string
+}
+
+type ValidatedImageUpload = {
+	buffer: Buffer
+	mime_type: string
 }
 
 const get_post_payload = (form_data: FormData) => {
@@ -35,10 +41,6 @@ const get_post_payload = (form_data: FormData) => {
 		return { error: { status: 400, message: 'Post must include text or an image' } }
 	}
 
-	if (image_file && !image_file.type.startsWith('image/')) {
-		return { error: { status: 400, message: 'Only image uploads are supported' } }
-	}
-
 	if (image_file && image_file.size > MAX_IMAGE_SIZE_BYTES) {
 		return { error: { status: 400, message: 'Image must be smaller than 5MB' } }
 	}
@@ -49,10 +51,185 @@ const get_post_payload = (form_data: FormData) => {
 	}
 }
 
-const upload_post_image = async (file: File) => {
-	const { cloudinary } = await import('$lib/server/cloudinary')
+const is_png = (buffer: Buffer) =>
+	buffer.length >= 8 &&
+	buffer[0] === 0x89 &&
+	buffer[1] === 0x50 &&
+	buffer[2] === 0x4e &&
+	buffer[3] === 0x47 &&
+	buffer[4] === 0x0d &&
+	buffer[5] === 0x0a &&
+	buffer[6] === 0x1a &&
+	buffer[7] === 0x0a &&
+	buffer.length >= 33 &&
+	buffer.readUInt32BE(8) === 13 &&
+	buffer.subarray(12, 16).toString('ascii') === 'IHDR' &&
+	buffer.subarray(buffer.length - 12, buffer.length - 8).toString('ascii') === 'IEND'
+
+const read_jpeg_marker = (buffer: Buffer, offset: number) => {
+	if (buffer[offset] !== 0xff) {
+		return { offset, marker: undefined }
+	}
+
+	let next_offset = offset
+	while (next_offset < buffer.length && buffer[next_offset] === 0xff) {
+		next_offset += 1
+	}
+
+	return {
+		offset: next_offset + 1,
+		marker: buffer[next_offset]
+	}
+}
+
+const is_jpeg_standalone_marker = (marker: number) =>
+	marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)
+
+const has_valid_jpeg_scan = (buffer: Buffer, offset: number) => {
+	let scan_offset = offset
+
+	while (scan_offset + 1 < buffer.length) {
+		if (buffer[scan_offset] !== 0xff) {
+			scan_offset += 1
+			continue
+		}
+
+		const next_byte = buffer[scan_offset + 1]
+		if (next_byte === 0x00) {
+			scan_offset += 2
+			continue
+		}
+
+		if (next_byte === 0xd9) {
+			return scan_offset + 2 === buffer.length
+		}
+
+		scan_offset += 1
+	}
+
+	return false
+}
+
+const is_jpeg = (buffer: Buffer) => {
+	if (
+		buffer.length < 6 ||
+		buffer[0] !== 0xff ||
+		buffer[1] !== 0xd8 ||
+		buffer[buffer.length - 2] !== 0xff ||
+		buffer[buffer.length - 1] !== 0xd9
+	) {
+		return false
+	}
+
+	let offset = 2
+
+	while (offset < buffer.length) {
+		const marker_result = read_jpeg_marker(buffer, offset)
+		const marker = marker_result.marker
+		offset = marker_result.offset
+
+		if (marker === undefined) {
+			return false
+		}
+
+		if (marker === 0xd9) {
+			return offset === buffer.length
+		}
+
+		if (is_jpeg_standalone_marker(marker)) {
+			continue
+		}
+
+		if (offset + 1 >= buffer.length) {
+			return false
+		}
+
+		const segment_length = buffer.readUInt16BE(offset)
+		if (segment_length < 2 || offset + segment_length > buffer.length) {
+			return false
+		}
+
+		if (marker === 0xda) {
+			return has_valid_jpeg_scan(buffer, offset + segment_length)
+		}
+
+		offset += segment_length
+	}
+
+	return false
+}
+
+const is_gif = (buffer: Buffer) => {
+	if (buffer.length < 14) return false
+
+	const header = buffer.subarray(0, 6).toString('ascii')
+	return (header === 'GIF87a' || header === 'GIF89a') && buffer[buffer.length - 1] === 0x3b
+}
+
+const is_webp = (buffer: Buffer) => {
+	if (
+		buffer.length < 16 ||
+		buffer.subarray(0, 4).toString('ascii') !== 'RIFF' ||
+		buffer.subarray(8, 12).toString('ascii') !== 'WEBP'
+	) {
+		return false
+	}
+
+	const riff_size = buffer.readUInt32LE(4)
+	const expected_length = riff_size + 8
+	if (expected_length !== buffer.length && expected_length !== buffer.length - 1) {
+		return false
+	}
+
+	const chunk_type = buffer.subarray(12, 16).toString('ascii')
+	if (!['VP8 ', 'VP8L', 'VP8X'].includes(chunk_type)) {
+		return false
+	}
+
+	if (buffer.length < 20) {
+		return false
+	}
+
+	const chunk_size = buffer.readUInt32LE(16)
+	return chunk_size > 0 && 20 + chunk_size <= buffer.length + 1
+}
+
+const get_image_mime_type = (buffer: Buffer) => {
+	if (is_png(buffer)) return 'image/png'
+	if (is_jpeg(buffer)) return 'image/jpeg'
+	if (is_gif(buffer)) return 'image/gif'
+	if (is_webp(buffer)) return 'image/webp'
+
+	return undefined
+}
+
+const validate_post_image = async (
+	file: File
+): Promise<ValidatedImageUpload | { error: string }> => {
+	if (file.type && !file.type.startsWith('image/')) {
+		return { error: 'Only image uploads are supported' }
+	}
+
 	const bytes = await file.arrayBuffer()
 	const buffer = Buffer.from(bytes)
+	const mime_type = get_image_mime_type(buffer)
+
+	if (!mime_type || !ALLOWED_IMAGE_MIME_TYPES.has(mime_type)) {
+		return { error: 'Only JPEG, PNG, GIF, and WebP images are supported' }
+	}
+
+	if (file.type && file.type !== mime_type) {
+		return { error: 'Image type does not match the uploaded file contents' }
+	}
+
+	return {
+		buffer,
+		mime_type
+	}
+}
+
+const upload_post_image = async (image: ValidatedImageUpload) => {
+	const { cloudinary } = await import('$lib/server/cloudinary')
 
 	return new Promise<UploadedPostImage>((resolve, reject) => {
 		const timeout = setTimeout(() => {
@@ -63,6 +240,7 @@ const upload_post_image = async (file: File) => {
 			{
 				folder: 'social-media/posts',
 				resource_type: 'image',
+				format: image.mime_type.replace('image/', ''),
 				timeout: UPLOAD_TIMEOUT_MS
 			},
 			(error, result) => {
@@ -79,12 +257,12 @@ const upload_post_image = async (file: File) => {
 			}
 		)
 
-		stream.end(buffer)
+		stream.end(image.buffer)
 	})
 }
 
-const get_post_image_url = async (file: File | undefined) => {
-	return file ? upload_post_image(file) : undefined
+const get_post_image_url = async (image: ValidatedImageUpload | undefined) => {
+	return image ? upload_post_image(image) : undefined
 }
 
 const delete_uploaded_post_image = async (public_id: string | undefined) => {
@@ -193,10 +371,17 @@ export const actions: Actions = {
 			return fail(payload.error.status, { message: payload.error.message })
 		}
 
+		const validated_image = payload.image_file
+			? await validate_post_image(payload.image_file)
+			: undefined
+		if (validated_image && 'error' in validated_image) {
+			return fail(400, { message: validated_image.error })
+		}
+
 		let uploaded_image: Awaited<ReturnType<typeof get_post_image_url>>
 
 		try {
-			uploaded_image = await get_post_image_url(payload.image_file)
+			uploaded_image = await get_post_image_url(validated_image)
 
 			await db.insert(post).values({
 				content: payload.trimmed_content,

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
-	import { auth_client } from '$lib/auth-client'
 	import type { ActionData } from './$types'
 	import {
 		MIN_USERNAME_LENGTH,
@@ -18,9 +17,8 @@
 	let email_status = $state<'idle' | 'invalid' | 'valid'>('idle')
 	let email_message = $state('')
 
-	let username_status = $state<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle')
+	let username_status = $state<'idle' | 'error' | 'valid'>('idle')
 	let username_message = $state('')
-	let username_timer: ReturnType<typeof setTimeout> | undefined = undefined
 
 	let password_status = $state<'idle' | 'invalid' | 'valid'>('idle')
 	let password_message = $state('')
@@ -64,14 +62,6 @@
 			return
 		}
 
-		if (username_timer) clearTimeout(username_timer)
-
-		if (!trimmed) {
-			username_status = 'idle'
-			username_message = ''
-			return
-		}
-
 		if (trimmed.length < MIN_USERNAME_LENGTH) {
 			username_status = 'error'
 			username_message = 'Username must be at least 3 characters'
@@ -79,30 +69,11 @@
 		} else if (trimmed.length > MAX_USERNAME_LENGTH) {
 			username_status = 'error'
 			username_message = 'Username must be less than 20 characters'
+			return
 		}
 
-		username_status = 'checking'
-		username_message = 'Checking username...'
-
-		username_timer = setTimeout(async () => {
-			const { data, error } = await auth_client.isUsernameAvailable({
-				username: trimmed
-			})
-
-			if (error) {
-				username_status = 'error'
-				username_message = 'Could not check username right now'
-				return
-			}
-
-			if (data?.available) {
-				username_status = 'available'
-				username_message = 'Username is available'
-			} else {
-				username_status = 'taken'
-				username_message = 'Username is already taken'
-			}
-		}, 400)
+		username_status = 'valid'
+		username_message = ''
 	}
 
 	const validate_password = (value: string) => {
@@ -290,9 +261,8 @@
 					/>
 					{#if username_message}
 						<p
-							class:text-gray-400={username_status === 'checking'}
-							class:text-green-400={username_status === 'available'}
-							class:text-red-400={username_status === 'taken' || username_status === 'error'}
+							class:text-green-400={username_status === 'valid'}
+							class:text-red-400={username_status === 'error'}
 							class="mt-2 text-sm break-words"
 						>
 							{username_message}
