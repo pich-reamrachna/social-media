@@ -14,10 +14,16 @@ const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 const UPLOAD_TIMEOUT_MS = 30_000
 const CREATE_POST_LIMIT = { limit: 5, windowMs: 60_000 }
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
+const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
 type UploadedPostImage = {
 	url: string
 	public_id: string
+}
+
+type ValidatedImageUpload = {
+	buffer: Buffer
+	mime_type: string
 }
 
 const get_post_payload = (form_data: FormData) => {
@@ -35,10 +41,6 @@ const get_post_payload = (form_data: FormData) => {
 		return { error: { status: 400, message: 'Post must include text or an image' } }
 	}
 
-	if (image_file && !image_file.type.startsWith('image/')) {
-		return { error: { status: 400, message: 'Only image uploads are supported' } }
-	}
-
 	if (image_file && image_file.size > MAX_IMAGE_SIZE_BYTES) {
 		return { error: { status: 400, message: 'Image must be smaller than 5MB' } }
 	}
@@ -49,10 +51,68 @@ const get_post_payload = (form_data: FormData) => {
 	}
 }
 
-const upload_post_image = async (file: File) => {
-	const { cloudinary } = await import('$lib/server/cloudinary')
+const is_png = (buffer: Buffer) =>
+	buffer.length >= 8 &&
+	buffer[0] === 0x89 &&
+	buffer[1] === 0x50 &&
+	buffer[2] === 0x4e &&
+	buffer[3] === 0x47 &&
+	buffer[4] === 0x0d &&
+	buffer[5] === 0x0a &&
+	buffer[6] === 0x1a &&
+	buffer[7] === 0x0a
+
+const is_jpeg = (buffer: Buffer) =>
+	buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
+
+const is_gif = (buffer: Buffer) => {
+	if (buffer.length < 6) return false
+
+	const header = buffer.subarray(0, 6).toString('ascii')
+	return header === 'GIF87a' || header === 'GIF89a'
+}
+
+const is_webp = (buffer: Buffer) =>
+	buffer.length >= 12 &&
+	buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+	buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+
+const get_image_mime_type = (buffer: Buffer) => {
+	if (is_png(buffer)) return 'image/png'
+	if (is_jpeg(buffer)) return 'image/jpeg'
+	if (is_gif(buffer)) return 'image/gif'
+	if (is_webp(buffer)) return 'image/webp'
+
+	return undefined
+}
+
+const validate_post_image = async (
+	file: File
+): Promise<ValidatedImageUpload | { error: string }> => {
+	if (!file.type.startsWith('image/')) {
+		return { error: 'Only image uploads are supported' }
+	}
+
 	const bytes = await file.arrayBuffer()
 	const buffer = Buffer.from(bytes)
+	const mime_type = get_image_mime_type(buffer)
+
+	if (!mime_type || !ALLOWED_IMAGE_MIME_TYPES.has(mime_type)) {
+		return { error: 'Only JPEG, PNG, GIF, and WebP images are supported' }
+	}
+
+	if (file.type && file.type !== mime_type) {
+		return { error: 'Image type does not match the uploaded file contents' }
+	}
+
+	return {
+		buffer,
+		mime_type
+	}
+}
+
+const upload_post_image = async (image: ValidatedImageUpload) => {
+	const { cloudinary } = await import('$lib/server/cloudinary')
 
 	return new Promise<UploadedPostImage>((resolve, reject) => {
 		const timeout = setTimeout(() => {
@@ -63,6 +123,7 @@ const upload_post_image = async (file: File) => {
 			{
 				folder: 'social-media/posts',
 				resource_type: 'image',
+				format: image.mime_type.replace('image/', ''),
 				timeout: UPLOAD_TIMEOUT_MS
 			},
 			(error, result) => {
@@ -79,12 +140,12 @@ const upload_post_image = async (file: File) => {
 			}
 		)
 
-		stream.end(buffer)
+		stream.end(image.buffer)
 	})
 }
 
-const get_post_image_url = async (file: File | undefined) => {
-	return file ? upload_post_image(file) : undefined
+const get_post_image_url = async (image: ValidatedImageUpload | undefined) => {
+	return image ? upload_post_image(image) : undefined
 }
 
 const delete_uploaded_post_image = async (public_id: string | undefined) => {
@@ -193,10 +254,17 @@ export const actions: Actions = {
 			return fail(payload.error.status, { message: payload.error.message })
 		}
 
+		const validated_image = payload.image_file
+			? await validate_post_image(payload.image_file)
+			: undefined
+		if (validated_image && 'error' in validated_image) {
+			return fail(400, { message: validated_image.error })
+		}
+
 		let uploaded_image: Awaited<ReturnType<typeof get_post_image_url>>
 
 		try {
-			uploaded_image = await get_post_image_url(payload.image_file)
+			uploaded_image = await get_post_image_url(validated_image)
 
 			await db.insert(post).values({
 				content: payload.trimmed_content,
