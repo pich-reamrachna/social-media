@@ -13,7 +13,7 @@ const config = {
 				'frame-ancestors': ['none'],
 				'form-action': ['self'],
 				'script-src': ['self'],
-				'style-src': ['self', 'unsafe-inline'],
+				'style-src': ['self'],
 				'img-src': [
 					'self',
 					'data:',

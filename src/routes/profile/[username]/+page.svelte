@@ -181,10 +181,11 @@
 			</div>
 		</header>
 
-		<div
-			class="h-48 w-full bg-[#111] bg-cover bg-center"
-			style="background-image: url('{data.profile.banner_url}');"
-		></div>
+		<div class="h-48 w-full overflow-hidden bg-[#111]">
+			{#if data.profile.banner_url}
+				<img src={data.profile.banner_url} alt="" class="h-full w-full object-cover" />
+			{/if}
+		</div>
 
 		<div class="relative flex items-start justify-between px-4">
 			<img
