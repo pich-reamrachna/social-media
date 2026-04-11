@@ -184,7 +184,7 @@ describe('register actions', () => {
 			)
 		).rejects.toMatchObject({
 			status: 302,
-			location: '/login'
+			location: '/login?verification=sent'
 		})
 		expect(mocks.sign_up_email).toHaveBeenCalledWith({
 			body: {

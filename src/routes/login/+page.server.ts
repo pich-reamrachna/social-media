@@ -6,6 +6,8 @@ import type { Actions, PageServerLoad } from './$types'
 
 const LOGIN_LIMIT = { limit: 5, windowMs: 60_000 }
 const GENERIC_LOGIN_ERROR = 'Invalid username or password'
+const EMAIL_NOT_VERIFIED_ERROR =
+	'Please verify your email before signing in. Check your inbox for a verification link.'
 
 const get_string = (formData: FormData, key: string) => {
 	const value = formData.get(key)
@@ -17,6 +19,13 @@ const get_login_user_rate_limit_key = (username: string) =>
 
 const get_login_ip_rate_limit_key = (client_address: string | undefined) =>
 	`login:ip:${client_address ?? 'unknown'}`
+
+const get_login_error_message = (error_message: string | undefined) => {
+	const normalized_error = error_message?.toLowerCase() || ''
+	return normalized_error.includes('email not verified')
+		? EMAIL_NOT_VERIFIED_ERROR
+		: GENERIC_LOGIN_ERROR
+}
 
 const get_login_rate_limit_failure = async (keys: string[]) => {
 	for (const key of keys) {
@@ -56,8 +65,12 @@ const get_blocked_login_rate_limit_failure = async (keys: string[]) => {
 	return undefined
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.user) throw redirect(302, '/home')
+
+	return {
+		verification_sent: url.searchParams.get('verification') === 'sent'
+	}
 }
 
 export const actions: Actions = {
@@ -87,7 +100,7 @@ export const actions: Actions = {
 			const rate_limit_failure = await get_login_rate_limit_failure(rate_limit_keys)
 			if (rate_limit_failure) return rate_limit_failure
 
-			return fail(400, { message: GENERIC_LOGIN_ERROR, username })
+			return fail(400, { message: get_login_error_message(error.message), username })
 		}
 
 		return redirect(302, '/home')
