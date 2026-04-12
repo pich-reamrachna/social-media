@@ -95,6 +95,29 @@ describe('login actions', () => {
 		expect(mocks.consume_rate_limit).toHaveBeenCalledTimes(2)
 	})
 
+	it('returns a verification message when email is not verified', async () => {
+		mocks.sign_in_username.mockRejectedValue(new mocks.APIError('Email not verified'))
+
+		const { actions } = await import('./+page.server')
+		const default_action = actions.default!
+		const result = await default_action(
+			create_event({
+				username: 'existing-user',
+				password: 'CorrectPassword1!'
+			}) as never
+		)
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: {
+				message:
+					'Please verify your email before signing in. Check your inbox for a verification link.',
+				username: 'existing-user'
+			}
+		})
+		expect(mocks.consume_rate_limit).toHaveBeenCalledTimes(2)
+	})
+
 	it('redirects to home when login succeeds', async () => {
 		mocks.sign_in_username.mockResolvedValue(undefined)
 

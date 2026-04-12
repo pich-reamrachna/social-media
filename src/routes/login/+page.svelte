@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
-	import type { ActionData } from './$types'
+	import type { ActionData, PageData } from './$types'
 
 	let username = $state('')
 	let password = $state('')
 	let should_remember_me = $state(false)
 	let is_show_password = $state(false)
 
-	const { form } = $props<{ form: ActionData }>()
+	const { form, data } = $props<{ form: ActionData; data: PageData }>()
 
 	// toggle show password
 	const toggle_password = () => {
@@ -84,6 +84,14 @@
 			</div>
 
 			<form method="POST" class="space-y-5 sm:space-y-6">
+				{#if data.verification_sent}
+					<p
+						class="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+					>
+						Check your inbox for a verification link before signing in.
+					</p>
+				{/if}
+
 				{#if form?.message}
 					<p
 						class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"

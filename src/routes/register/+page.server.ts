@@ -128,6 +128,6 @@ export const actions: Actions = {
 			})
 		}
 
-		throw redirect(302, '/login')
+		throw redirect(302, '/login?verification=sent')
 	}
 }

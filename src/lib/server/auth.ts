@@ -6,6 +6,7 @@ import { env } from '$env/dynamic/private'
 import { getRequestEvent } from '$app/server'
 import { db } from '$lib/server/db'
 import { MIN_USERNAME_LENGTH, MAX_USERNAME_LENGTH } from '$lib/constants/auth'
+import { send_email } from '$lib/server/email'
 
 const plugins = [
 	username({
@@ -52,7 +53,34 @@ export const auth = betterAuth({
 	baseURL: env.ORIGIN,
 	secret: env.BETTER_AUTH_SECRET,
 	database: drizzleAdapter(db, { provider: 'pg' }),
-	emailAndPassword: { enabled: true },
+	emailAndPassword: {
+		enabled: true,
+		requireEmailVerification: true
+	},
+	emailVerification: {
+		sendOnSignUp: true,
+		sendOnSignIn: true,
+		autoSignInAfterVerification: true,
+		sendVerificationEmail: async ({ user, url }) => {
+			void send_email({
+				to: user.email,
+				subject: 'Verify your email for Y',
+				text: `Verify your email for Y by opening this link: ${url}`,
+				html: `
+					<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+						<h1 style="margin-bottom: 16px;">Verify your email</h1>
+						<p style="margin-bottom: 16px;">
+							Click the link below to verify your Y account and finish signing in.
+						</p>
+						<p style="margin-bottom: 24px;">
+							<a href="${url}" style="color: #db2777;">Verify email</a>
+						</p>
+						<p>If you did not create this account, you can ignore this email.</p>
+					</div>
+				`
+			})
+		}
+	},
 	session: {
 		cookieCache: {
 			enabled: true,

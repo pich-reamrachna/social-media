@@ -43,6 +43,12 @@ BETTER_AUTH_SECRET="replace-with-a-long-random-secret"
 
 # Secret used to authorize the Vercel cron cleanup endpoint
 CRON_SECRET="replace-with-a-long-random-secret"
+
+# Email verification
+# Resend is the simplest hosted option; in local dev the app logs verification links if unset
+EMAIL_FROM="noreply@your-domain.com"
+EMAIL_REPLY_TO="support@your-domain.com"
+RESEND_API_KEY="re_xxx"
 ```
 
 Notes:
@@ -50,6 +56,7 @@ Notes:
 - Use the pooled Neon URL for `DATABASE_URL`
 - Use the direct Neon URL for `DATABASE_URL_MIGRATION`
 - Drizzle falls back to `DATABASE_URL` if `DATABASE_URL_MIGRATION` is not set, but the direct URL is the intended setup for migrations and Studio
+- If `RESEND_API_KEY` or `EMAIL_FROM` are missing in local development, email verification links are logged to the server console instead of being sent
 
 ## Database Setup
 
