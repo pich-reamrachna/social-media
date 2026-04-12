@@ -34,6 +34,7 @@ describe('send_email', () => {
 
 	afterEach(() => {
 		vi.useRealTimers()
+		vi.restoreAllMocks()
 		vi.unstubAllGlobals()
 	})
 
