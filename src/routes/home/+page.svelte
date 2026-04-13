@@ -334,7 +334,18 @@
 						clear_selected_image(formElement)
 						show_toast('success', 'Post created!')
 					} else {
-						show_toast('error', 'Failed to post')
+						const failure_message =
+							result.type === 'failure' &&
+							result.data &&
+							typeof result.data === 'object' &&
+							'message' in result.data &&
+							typeof result.data.message === 'string'
+								? result.data.message
+								: result.type === 'error'
+									? result.error?.message
+									: 'Failed to post'
+
+						show_toast('error', failure_message || 'Failed to post')
 					}
 					await update()
 				}
