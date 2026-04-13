@@ -51,6 +51,8 @@
 
 	// Character limit constants
 	const MAX_POST_LENGTH = 280
+	const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+	const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
 	// Reactive character count
 	// eslint-disable-next-line prefer-const
@@ -195,6 +197,18 @@
 			return
 		}
 
+		if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
+			clear_selected_image(composer_form ?? undefined)
+			show_toast('error', 'Only JPEG, PNG, GIF, and WebP images are supported')
+			return
+		}
+
+		if (file.size > MAX_IMAGE_SIZE_BYTES) {
+			clear_selected_image(composer_form ?? undefined)
+			show_toast('error', 'Image must be 5MB or less')
+			return
+		}
+
 		if (selected_image_preview) {
 			URL.revokeObjectURL(selected_image_preview)
 		}
@@ -334,7 +348,18 @@
 						clear_selected_image(formElement)
 						show_toast('success', 'Post created!')
 					} else {
-						show_toast('error', 'Failed to post')
+						const failure_message =
+							result.type === 'failure' &&
+							result.data &&
+							typeof result.data === 'object' &&
+							'message' in result.data &&
+							typeof result.data.message === 'string'
+								? result.data.message
+								: result.type === 'error'
+									? 'An unexpected error occurred'
+									: 'Failed to post'
+
+						show_toast('error', failure_message || 'Failed to post')
 					}
 					await update()
 				}

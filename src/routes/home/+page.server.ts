@@ -60,139 +60,23 @@ const is_png = (buffer: Buffer) =>
 	buffer[4] === 0x0d &&
 	buffer[5] === 0x0a &&
 	buffer[6] === 0x1a &&
-	buffer[7] === 0x0a &&
-	buffer.length >= 33 &&
-	buffer.readUInt32BE(8) === 13 &&
-	buffer.subarray(12, 16).toString('ascii') === 'IHDR' &&
-	buffer.subarray(buffer.length - 12, buffer.length - 8).toString('ascii') === 'IEND'
+	buffer[7] === 0x0a
 
-const read_jpeg_marker = (buffer: Buffer, offset: number) => {
-	if (buffer[offset] !== 0xff) {
-		return { offset, marker: undefined }
-	}
-
-	let next_offset = offset
-	while (next_offset < buffer.length && buffer[next_offset] === 0xff) {
-		next_offset += 1
-	}
-
-	return {
-		offset: next_offset + 1,
-		marker: buffer[next_offset]
-	}
-}
-
-const is_jpeg_standalone_marker = (marker: number) =>
-	marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)
-
-const has_valid_jpeg_scan = (buffer: Buffer, offset: number) => {
-	let scan_offset = offset
-
-	while (scan_offset + 1 < buffer.length) {
-		if (buffer[scan_offset] !== 0xff) {
-			scan_offset += 1
-			continue
-		}
-
-		const next_byte = buffer[scan_offset + 1]
-		if (next_byte === 0x00) {
-			scan_offset += 2
-			continue
-		}
-
-		if (next_byte === 0xd9) {
-			return scan_offset + 2 === buffer.length
-		}
-
-		scan_offset += 1
-	}
-
-	return false
-}
-
-const is_jpeg = (buffer: Buffer) => {
-	if (
-		buffer.length < 6 ||
-		buffer[0] !== 0xff ||
-		buffer[1] !== 0xd8 ||
-		buffer[buffer.length - 2] !== 0xff ||
-		buffer[buffer.length - 1] !== 0xd9
-	) {
-		return false
-	}
-
-	let offset = 2
-
-	while (offset < buffer.length) {
-		const marker_result = read_jpeg_marker(buffer, offset)
-		const marker = marker_result.marker
-		offset = marker_result.offset
-
-		if (marker === undefined) {
-			return false
-		}
-
-		if (marker === 0xd9) {
-			return offset === buffer.length
-		}
-
-		if (is_jpeg_standalone_marker(marker)) {
-			continue
-		}
-
-		if (offset + 1 >= buffer.length) {
-			return false
-		}
-
-		const segment_length = buffer.readUInt16BE(offset)
-		if (segment_length < 2 || offset + segment_length > buffer.length) {
-			return false
-		}
-
-		if (marker === 0xda) {
-			return has_valid_jpeg_scan(buffer, offset + segment_length)
-		}
-
-		offset += segment_length
-	}
-
-	return false
-}
+const is_jpeg = (buffer: Buffer) =>
+	buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
 
 const is_gif = (buffer: Buffer) => {
-	if (buffer.length < 14) return false
+	if (buffer.length < 6) return false
 
 	const header = buffer.subarray(0, 6).toString('ascii')
-	return (header === 'GIF87a' || header === 'GIF89a') && buffer[buffer.length - 1] === 0x3b
+	return header === 'GIF87a' || header === 'GIF89a'
 }
 
-const is_webp = (buffer: Buffer) => {
-	if (
-		buffer.length < 16 ||
-		buffer.subarray(0, 4).toString('ascii') !== 'RIFF' ||
-		buffer.subarray(8, 12).toString('ascii') !== 'WEBP'
-	) {
-		return false
-	}
-
-	const riff_size = buffer.readUInt32LE(4)
-	const expected_length = riff_size + 8
-	if (expected_length !== buffer.length && expected_length !== buffer.length - 1) {
-		return false
-	}
-
-	const chunk_type = buffer.subarray(12, 16).toString('ascii')
-	if (!['VP8 ', 'VP8L', 'VP8X'].includes(chunk_type)) {
-		return false
-	}
-
-	if (buffer.length < 20) {
-		return false
-	}
-
-	const chunk_size = buffer.readUInt32LE(16)
-	return chunk_size > 0 && 20 + chunk_size <= buffer.length + 1
-}
+const is_webp = (buffer: Buffer) =>
+	buffer.length >= 16 &&
+	buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+	buffer.subarray(8, 12).toString('ascii') === 'WEBP' &&
+	['VP8 ', 'VP8L', 'VP8X'].includes(buffer.subarray(12, 16).toString('ascii'))
 
 const get_image_mime_type = (buffer: Buffer) => {
 	if (is_png(buffer)) return 'image/png'
@@ -368,6 +252,9 @@ export const actions: Actions = {
 		const form_data = await request.formData()
 		const payload = get_post_payload(form_data)
 		if ('error' in payload) {
+			console.warn('[createPost] payload rejected', {
+				reason: payload.error.message
+			})
 			return fail(payload.error.status, { message: payload.error.message })
 		}
 
@@ -375,6 +262,12 @@ export const actions: Actions = {
 			? await validate_post_image(payload.image_file)
 			: undefined
 		if (validated_image && 'error' in validated_image) {
+			console.warn('[createPost] image validation rejected', {
+				file_name: payload.image_file?.name,
+				file_type: payload.image_file?.type,
+				file_size: payload.image_file?.size,
+				reason: validated_image.error
+			})
 			return fail(400, { message: validated_image.error })
 		}
 
