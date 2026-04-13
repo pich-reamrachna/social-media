@@ -51,6 +51,8 @@
 
 	// Character limit constants
 	const MAX_POST_LENGTH = 280
+	const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+	const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
 	// Reactive character count
 	// eslint-disable-next-line prefer-const
@@ -192,6 +194,18 @@
 		if (!file) {
 			selected_image_name = ''
 			selected_image_preview = undefined
+			return
+		}
+
+		if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
+			clear_selected_image(composer_form ?? undefined)
+			show_toast('error', 'Only JPEG, PNG, GIF, and WebP images are supported')
+			return
+		}
+
+		if (file.size > MAX_IMAGE_SIZE_BYTES) {
+			clear_selected_image(composer_form ?? undefined)
+			show_toast('error', 'Image must be smaller than 5MB')
 			return
 		}
 
