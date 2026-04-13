@@ -205,7 +205,7 @@
 
 		if (file.size > MAX_IMAGE_SIZE_BYTES) {
 			clear_selected_image(composer_form ?? undefined)
-			show_toast('error', 'Image must be smaller than 5MB')
+			show_toast('error', 'Image must be 5MB or less')
 			return
 		}
 
@@ -356,7 +356,7 @@
 							typeof result.data.message === 'string'
 								? result.data.message
 								: result.type === 'error'
-									? result.error?.message
+									? 'An unexpected error occurred'
 									: 'Failed to post'
 
 						show_toast('error', failure_message || 'Failed to post')
