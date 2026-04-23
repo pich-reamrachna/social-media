@@ -10,7 +10,11 @@ import {
 import { dev } from '$app/environment'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+<<<<<<< HEAD
 import { Buffer } from 'node:buffer'
+=======
+import { upload_cloudinary } from '$lib/server/cloudinary'
+>>>>>>> adce950aac4deb7da832cb50c48650b2e7880b9e
 import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_POSTS_LIMIT = 20
@@ -216,7 +220,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const all_post_ids = profile_posts.map((p) => p.id)
 
 	const liked_post_ids = await load_viewer_likes(all_post_ids, viewer?.id)
-
 	const trending = [
 		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
 		{ category: 'ART · TRENDING', tag: '#DigitalNoir', count: '12.9K' },
@@ -340,6 +343,11 @@ export const actions: Actions = {
 
 		return { success: true }
 	},
+<<<<<<< HEAD
+=======
+
+	// Update profile
+>>>>>>> adce950aac4deb7da832cb50c48650b2e7880b9e
 	updateProfile: async ({ request, locals }) => {
 		const viewer = locals.user
 		if (!viewer) {
@@ -347,6 +355,7 @@ export const actions: Actions = {
 		}
 
 		const form_data = await request.formData()
+<<<<<<< HEAD
 		const name = form_data.get('name')
 		const bio = form_data.get('bio')
 		const avatar_file = form_data.get('avatar')
@@ -391,5 +400,39 @@ export const actions: Actions = {
 		}
 
 		return { success: true }
+=======
+		const name = form_data.get('name') as string
+		const bio = form_data.get('bio') as string
+		const banner_file = form_data.get('banner') as File | null
+		const avatar_file = form_data.get('avatar') as File | null
+
+		if (typeof name !== 'string' || !name) {
+			return fail(400, { message: 'Invalid name' })
+		}
+
+		const update_payload: Partial<typeof user.$inferSelect> = {
+			name: name,
+			bio: bio || ''
+		}
+
+		try {
+			if (avatar_file && avatar_file instanceof File && avatar_file.size > 0) {
+				const avatar_url = await upload_cloudinary(avatar_file, 'avatars')
+				update_payload.image = avatar_url
+			}
+
+			if (banner_file && banner_file instanceof File && banner_file.size > 0) {
+				const banner_url = await upload_cloudinary(banner_file, 'banners')
+				update_payload.banner = banner_url
+			}
+
+			await db.update(user).set(update_payload).where(eq(user.id, viewer.id))
+
+			return { success: true }
+		} catch (err) {
+			console.error('Update failed: ', err)
+			return fail(500, { message: 'Failed to update profile' })
+		}
+>>>>>>> adce950aac4deb7da832cb50c48650b2e7880b9e
 	}
 }

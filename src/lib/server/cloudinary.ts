@@ -15,4 +15,25 @@ cloudinary.config({
 	api_secret: require_env(env.CLOUDINARY_API_SECRET, 'CLOUDINARY_API_SECRET')
 })
 
-export { cloudinary }
+async function upload_cloudinary(file: File, folder: string) {
+	const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 // 5MB
+	if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
+		throw new Error('Invalid file size')
+	}
+	const array_buffer = await file.arrayBuffer()
+	const buffer = Buffer.from(array_buffer)
+
+	return new Promise<string>((resolve, reject) => {
+		cloudinary.uploader
+			.upload_stream({ folder }, (error, result) => {
+				if (error || !result) {
+					reject(error || new Error('Upload failed'))
+					return
+				}
+				resolve(result.secure_url)
+			})
+			.end(buffer)
+	})
+}
+
+export { cloudinary, upload_cloudinary }
