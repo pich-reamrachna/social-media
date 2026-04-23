@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths'
 	import './RightSidebar.css'
 	import SearchDropdown from '$lib/components/SearchDropdown.svelte'
 
@@ -46,9 +45,9 @@
 		{search_query}
 		{search_users}
 		aria_label="Search"
-		{on_search_change}
-		{on_open_profile}
-		{on_apply_keyword_search}
+		{...on_search_change ? { on_search_change } : {}}
+		{...on_open_profile ? { on_open_profile } : {}}
+		{...on_apply_keyword_search ? { on_apply_keyword_search } : {}}
 	/>
 
 	<div class="sidebar-card">
@@ -91,9 +90,6 @@
 
 	{#if is_footer_visible}
 		<footer class="sidebar-footer">
-			<a href={resolve('/terms')}>Terms of Service</a>
-			<a href={resolve('/privacy')}>Privacy Policy</a>
-			<a href={resolve('/cookies')}>Cookie Policy</a>
 			<span>© 2026 Y.</span>
 		</footer>
 	{/if}

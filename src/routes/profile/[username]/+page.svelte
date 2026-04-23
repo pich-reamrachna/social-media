@@ -320,9 +320,6 @@
 		{/if}
 
 		<footer class="sidebar-footer">
-			<a href={resolve('/terms')}>Terms of Service</a>
-			<a href={resolve('/privacy')}>Privacy Policy</a>
-			<a href={resolve('/cookies')}>Cookie Policy</a>
 			<span>© 2026 Y.</span>
 		</footer>
 	</aside>

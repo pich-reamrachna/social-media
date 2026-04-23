@@ -184,14 +184,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 		: []
 	const liked_post_ids = new Set(viewer_likes.map((entry) => entry.post_id))
 
-	// for now, just return some dummy data for trending
 	const trending = [
 		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
 		{ category: 'ART · TRENDING', tag: '#DigitalNoir', count: '12.9K' },
 		{ category: 'MUSIC · TRENDING', tag: 'Synthetix Core', count: '8.1K' }
 	]
 
-	// for now, just return some dummy data for who to follow
 	const who_to_follow = [
 		{
 			name: 'Billie Eilish',
