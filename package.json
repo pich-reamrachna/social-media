@@ -30,7 +30,8 @@
 			"smol-toml": "^1.6.1",
 			"camelcase": "5",
 			"defu": "^6.1.5",
-			"drizzle-orm": "^0.45.2"
+			"drizzle-orm": "^0.45.2",
+			"@xmldom/xmldom": "^0.8.13"
 		}
 	},
 	"scripts": {
