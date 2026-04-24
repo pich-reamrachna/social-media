@@ -271,8 +271,11 @@ export const actions: Actions = {
 		}
 
 		const update_payload: Partial<typeof user.$inferSelect> = {
-			name: name.trim(),
-			bio: typeof bio === 'string' ? bio.trim() : null
+			name: name.trim()
+		}
+
+		if (typeof bio === 'string') {
+			update_payload.bio = bio.trim()
 		}
 
 		try {
