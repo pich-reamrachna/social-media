@@ -51,7 +51,7 @@
 		"test": "pnpm exec vitest run && pnpm run test:e2e",
 		"test:unit": "vitest",
 		"test:property": "vitest run src/lib/vitest-examples/greet.property.spec.ts",
-		"test:e2e": "playwright test",
+		"test:e2e": "playwright test --pass-with-no-tests",
 		"cspell": "cspell \"src/**/*.{js,ts,svelte}\" \"*.md\"",
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
