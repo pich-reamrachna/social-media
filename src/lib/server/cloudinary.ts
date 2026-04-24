@@ -20,14 +20,8 @@ cloudinary.config({
 async function upload_cloudinary(file: File, folder: string) {
 	const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 // 5MB
 	const UPLOAD_TIMEOUT_MS = 25_000
-	const ALLOWED_MIME_TYPES = new Set([
-		'image/jpeg',
-		'image/png',
-		'image/webp',
-		'image/gif',
-		'image/svg+xml'
-	])
-	const ALLOWED_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
+	const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+	const ALLOWED_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
 
 	if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
 		throw new Error('Invalid file size')
