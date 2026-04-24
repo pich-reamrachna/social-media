@@ -10,12 +10,14 @@ import {
 import { dev } from '$app/environment'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { upload_cloudinary } from '$lib/server/cloudinary'
 import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_POSTS_LIMIT = 20
 const PROFILE_LIKED_POSTS_LIMIT = 20
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
 
+// --- PROFILE LOADING LOGIC ---
 const log_dev_duration = (label: string, started_at: number) => {
 	if (dev) {
 		console.info(`${label} ${Math.round(performance.now() - started_at)}ms`)
@@ -35,9 +37,7 @@ const load_profile_posts = async (user_id: string) => {
 	const started_at = dev ? performance.now() : 0
 	const profile_posts = await db.query.post.findMany({
 		where: eq(post.userId, user_id),
-		with: {
-			author: true
-		},
+		with: { author: true },
 		orderBy: [desc(post.createdAt)],
 		limit: PROFILE_POSTS_LIMIT
 	})
@@ -49,13 +49,7 @@ const load_liked_posts = async (user_id: string) => {
 	const started_at = dev ? performance.now() : 0
 	const user_likes = await db.query.like.findMany({
 		where: eq(like.userId, user_id),
-		with: {
-			post: {
-				with: {
-					author: true
-				}
-			}
-		},
+		with: { post: { with: { author: true } } },
 		orderBy: [desc(like.createdAt)],
 		limit: PROFILE_LIKED_POSTS_LIMIT
 	})
@@ -68,9 +62,7 @@ const load_viewer_likes = async (post_ids: string[], viewer_id?: string) => {
 	const viewer_likes =
 		post_ids.length && viewer_id
 			? await db
-					.select({
-						post_id: like.postId
-					})
+					.select({ post_id: like.postId })
 					.from(like)
 					.where(and(eq(like.userId, viewer_id), inArray(like.postId, post_ids)))
 			: []
@@ -132,7 +124,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const all_post_ids = profile_posts.map((p) => p.id)
 
 	const liked_post_ids = await load_viewer_likes(all_post_ids, viewer?.id)
-
 	const trending = [
 		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
 		{ category: 'ART · TRENDING', tag: '#DigitalNoir', count: '12.9K' },
@@ -145,11 +136,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			handle: 'billieeilish',
 			avatar_url: 'https://i.pravatar.cc/150?img=5'
 		},
-		{
-			name: 'Bad Bunny',
-			handle: 'badbunnypr',
-			avatar_url: 'https://i.pravatar.cc/150?img=60'
-		}
+		{ name: 'Bad Bunny', handle: 'badbunnypr', avatar_url: 'https://i.pravatar.cc/150?img=60' }
 	]
 
 	const result = {
@@ -235,9 +222,7 @@ export const actions: Actions = {
 			})
 			const current_post = await db.query.post.findFirst({
 				where: eq(post.id, post_id),
-				columns: {
-					likeCount: true
-				}
+				columns: { likeCount: true }
 			})
 			if (!current_post) {
 				return fail(404, { message: 'Post not found' })
@@ -247,17 +232,13 @@ export const actions: Actions = {
 				await db.delete(like).where(and(eq(like.postId, post_id), eq(like.userId, viewer.id)))
 				await db
 					.update(post)
-					.set({
-						likeCount: sql`greatest(${post.likeCount} - 1, 0)`
-					})
+					.set({ likeCount: sql`greatest(${post.likeCount} - 1, 0)` })
 					.where(eq(post.id, post_id))
 			} else {
 				await db.insert(like).values({ userId: viewer.id, postId: post_id })
 				await db
 					.update(post)
-					.set({
-						likeCount: sql`${post.likeCount} + 1`
-					})
+					.set({ likeCount: sql`${post.likeCount} + 1` })
 					.where(eq(post.id, post_id))
 			}
 		} catch {
@@ -265,5 +246,55 @@ export const actions: Actions = {
 		}
 
 		return { success: true }
+	},
+
+	// Update profile
+	// Update profile
+	updateProfile: async ({ request, locals }) => {
+		const viewer = locals.user
+		if (!viewer) {
+			return fail(401, { message: 'Unauthorized' })
+		}
+
+		const form_data = await request.formData()
+		const name = form_data.get('name')
+		const bio = form_data.get('bio')
+		const banner_file = form_data.get('banner') as File | null
+		const avatar_file = form_data.get('avatar') as File | null
+
+		if (typeof name !== 'string' || !name.trim()) {
+			return fail(400, { message: 'Name is required' })
+		}
+
+		if (name.length > 50) {
+			return fail(400, { message: 'Name must be under 50 characters' })
+		}
+
+		const update_payload: Partial<typeof user.$inferSelect> = {
+			name: name.trim()
+		}
+
+		if (typeof bio === 'string') {
+			update_payload.bio = bio.trim()
+		}
+
+		try {
+			if (avatar_file && avatar_file instanceof File && avatar_file.size > 0) {
+				const avatar_url = await upload_cloudinary(avatar_file, 'avatars')
+				update_payload.image = avatar_url
+			}
+
+			if (banner_file && banner_file instanceof File && banner_file.size > 0) {
+				const banner_url = await upload_cloudinary(banner_file, 'banners')
+				update_payload.banner = banner_url
+			}
+
+			await db.update(user).set(update_payload).where(eq(user.id, viewer.id))
+
+			return { success: true }
+		} catch (err) {
+			console.error('Update failed: ', err)
+			return fail(500, { message: 'Failed to update profile' })
+		}
 	}
 }
