@@ -117,6 +117,14 @@
 		password_message = 'Valid Password'
 	}
 
+	// eslint-disable-next-line prefer-const
+	let has_errors = $derived(
+		email_status === 'invalid' ||
+			username_status === 'error' ||
+			password_status === 'invalid' ||
+			confirm_password_status === 'invalid'
+	)
+
 	const toggle_password = () => {
 		is_show_password = !is_show_password
 	}
@@ -373,7 +381,8 @@
 				<div class="pt-6">
 					<button
 						type="submit"
-						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99]"
+						disabled={has_errors}
+						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
 					>
 						Create Account
 					</button>
