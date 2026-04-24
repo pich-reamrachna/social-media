@@ -12,13 +12,18 @@
 	import { deserialize } from '$app/forms'
 
 	import type { PageData } from './$types'
-	const { data }: { data: PageData } = $props()
-	type FeedPost = PageData['posts'][number]
-	type SearchUser = {
-		name: string
-		handle: string
-		avatar_url: string
-	}
+	import { type SideNavUser, type ProfilePost, type TrendingItem } from '$lib/types'
+	const {
+		data
+	}: {
+		data: PageData & {
+			current_user: SideNavUser
+			posts: ProfilePost[]
+			who_to_follow: SideNavUser[]
+			trending: TrendingItem[]
+		}
+	} = $props()
+	type FeedPost = ProfilePost
 
 	let active_tab = $state<'for-you' | 'following'>('for-you')
 	const home_tabs = [
@@ -77,7 +82,7 @@
 		form_data.append('postId', post_id)
 
 		try {
-			const response = await fetch('?/toggleLike', {
+			const response = await fetch('?/toggle_like', {
 				method: 'POST',
 				body: form_data
 			})
@@ -105,8 +110,24 @@
 		}
 	}
 
-	function toggle_follow(handle: string): void {
-		followed_users[handle] = !(followed_users[handle] ?? false)
+	async function toggle_follow(user_id: string) {
+		const form_data = new FormData()
+		form_data.append('userId', user_id)
+
+		try {
+			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
+			const result = deserialize(await response.text())
+
+			if (result.type !== 'success') throw new Error()
+
+			const payload = result.data as { is_following?: boolean; target_user_id?: string }
+			if (payload.target_user_id) {
+				followed_users[payload.target_user_id] = !!payload.is_following
+			}
+			show_toast('success', payload.is_following ? 'Followed!' : 'Unfollowed')
+		} catch {
+			show_toast('error', 'Failed to update follow')
+		}
 	}
 
 	function filter_posts() {
@@ -116,10 +137,10 @@
 		return data.posts.filter((post: FeedPost) => post.content.toLowerCase().includes(q))
 	}
 
-	function get_search_users(): SearchUser[] {
-		const users = new SvelteMap<string, SearchUser>()
+	function get_search_users(): SideNavUser[] {
+		const users = new SvelteMap<string, SideNavUser>()
 
-		const add_user = (user: SearchUser) => {
+		const add_user = (user: SideNavUser) => {
 			const normalized_handle = user.handle.trim().toLowerCase()
 			if (!normalized_handle || users.has(normalized_handle)) return
 			users.set(normalized_handle, user)
@@ -128,7 +149,7 @@
 		add_user(data.current_user)
 
 		for (const post of data.posts) {
-			add_user(post.author)
+			add_user(post.author as SideNavUser)
 		}
 
 		for (const user of data.who_to_follow) {
@@ -138,7 +159,7 @@
 		return [...users.values()]
 	}
 
-	function get_matched_users(): SearchUser[] {
+	function get_matched_users(): SideNavUser[] {
 		const q = search_query.toLowerCase().trim()
 		if (!q) return []
 
@@ -337,31 +358,30 @@
 			class="composer"
 			method="POST"
 			enctype="multipart/form-data"
-			action="?/createPost"
-			use:enhance={({ formElement }) => {
+			action="?/create_post"
+			use:enhance={() => {
 				is_posting = true
 				show_toast('loading', 'Posting...')
 				return async ({ result, update }) => {
 					is_posting = false
+					await update()
+
 					if (result.type === 'success') {
 						post_draft = ''
-						clear_selected_image(formElement)
+						clear_selected_image(composer_form ?? undefined)
 						show_toast('success', 'Post created!')
 					} else {
-						const failure_message =
+						const failure_msg =
 							result.type === 'failure' &&
 							result.data &&
 							typeof result.data === 'object' &&
 							'message' in result.data &&
 							typeof result.data.message === 'string'
 								? result.data.message
-								: result.type === 'error'
-									? 'An unexpected error occurred'
-									: 'Failed to post'
+								: 'Failed to post'
 
-						show_toast('error', failure_message || 'Failed to post')
+						show_toast('error', failure_msg)
 					}
-					await update()
 				}
 			}}
 		>

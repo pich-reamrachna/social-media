@@ -8,8 +8,25 @@
 	import '$lib/components/RightSidebar.css'
 
 	import type { PageData } from './$types'
-	const { data }: { data: PageData } = $props()
-	type ProfilePost = (typeof data.posts)[number]
+	import {
+		type SideNavUser,
+		type ProfileData,
+		type ProfilePost,
+		type TrendingItem
+	} from '$lib/types'
+	const {
+		data
+	}: {
+		data: PageData & {
+			current_user: SideNavUser | undefined
+			profile: ProfileData
+			posts: ProfilePost[]
+			is_owner: boolean
+			is_following: boolean
+			who_to_follow: SideNavUser[]
+			trending: TrendingItem[]
+		}
+	} = $props()
 
 	let active_tab = $state<'Posts' | 'media' | 'liked posts'>('Posts')
 	let is_settings_open = $state(false)
@@ -31,9 +48,9 @@
 		like_count_override = {}
 	})
 
-	function format_join_date(dateString: Date | string) {
-		if (!dateString) return 'Unknown Date'
-		const date = new Date(dateString)
+	function format_join_date(date_string: Date | string) {
+		if (!date_string) return 'Unknown Date'
+		const date = new Date(date_string)
 		return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 	}
 
@@ -55,7 +72,7 @@
 
 		try {
 			const form_data = new FormData()
-			const response = await fetch('?/loadLikedPosts', {
+			const response = await fetch('?/load_liked_posts_action', {
 				method: 'POST',
 				body: form_data
 			})
@@ -138,7 +155,7 @@
 		form_data.append('postId', post_id)
 
 		try {
-			const response = await fetch('?/toggleLike', {
+			const response = await fetch('?/toggle_like', {
 				method: 'POST',
 				body: form_data
 			})
@@ -153,8 +170,20 @@
 		}
 	}
 
-	function toggle_follow(handle: string): void {
-		followed_users[handle] = !(followed_users[handle] ?? false)
+	async function toggle_follow(user_id: string) {
+		const form_data = new FormData()
+		form_data.append('userId', user_id)
+
+		try {
+			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
+			const result = deserialize(await response.text())
+
+			if (result.type !== 'success') throw new Error()
+
+			window.location.reload()
+		} catch {
+			// error state handled by page refresh or toast
+		}
 	}
 </script>
 
@@ -206,9 +235,12 @@
 					</button>
 				{:else}
 					<button
-						class="rounded-full border border-[#f3f4f6] bg-[#f3f4f6] px-4 py-1.5 text-sm font-bold text-[#0d0d0d] transition-colors hover:bg-white/90"
+						class="rounded-full border border-[#f3f4f6] {data.is_following
+							? 'bg-transparent text-[#f3f4f6]'
+							: 'bg-[#f3f4f6] text-[#0d0d0d]'} px-4 py-1.5 text-sm font-bold transition-colors hover:bg-white/10"
+						onclick={() => toggle_follow(data.profile.id)}
 					>
-						Follow
+						{data.is_following ? 'Following' : 'Follow'}
 					</button>
 				{/if}
 			</div>
@@ -226,6 +258,13 @@
 				<span class="flex items-center gap-1">📍 Phnom Penh, Cambodia</span>
 				<span class="flex items-center gap-1"
 					>📅 Joined {format_join_date(data.profile.joined_date)}</span
+				>
+			</div>
+
+			<div class="flex gap-4 text-[0.9rem] text-[#e5e7eb]">
+				<span><strong class="text-[#f3f4f6]">{data.profile.stats.following}</strong> Following</span
+				>
+				<span><strong class="text-[#f3f4f6]">{data.profile.stats.followers}</strong> Followers</span
 				>
 			</div>
 		</div>
@@ -298,7 +337,7 @@
 				<h3 class="sidebar-card-title">Who to Follow</h3>
 				<ul class="follow-list">
 					{#each data.who_to_follow as user (user.handle)}
-						{@const is_following = followed_users[user.handle] ?? false}
+						{@const is_following = followed_users[user.id] ?? false}
 						<li class="follow-item">
 							<img src={user.avatar_url} alt={user.name} class="follow-avatar" />
 							<div class="follow-info">
@@ -308,7 +347,7 @@
 							<button
 								class="follow-btn"
 								class:follow-btn-active={is_following}
-								onclick={() => toggle_follow(user.handle)}
+								onclick={() => toggle_follow(user.id)}
 							>
 								{is_following ? 'Following' : 'Follow'}
 							</button>

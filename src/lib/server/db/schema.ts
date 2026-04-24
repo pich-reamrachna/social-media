@@ -13,7 +13,9 @@ export const user_relations = relations(auth.user, ({ many }) => ({
 	accounts: many(auth.account),
 	posts: many(postSchema.post),
 	likes: many(interactions.like),
-	shares: many(interactions.share)
+	shares: many(interactions.share),
+	followers: many(interactions.follow, { relationName: 'following' }),
+	following: many(interactions.follow, { relationName: 'follower' })
 }))
 
 // Re-export EVERYTHING so 'db.query' can see all tables

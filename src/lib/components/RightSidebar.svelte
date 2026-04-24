@@ -3,17 +3,7 @@
 	import './RightSidebar.css'
 	import SearchDropdown from '$lib/components/SearchDropdown.svelte'
 
-	type TrendingItem = {
-		category: string
-		tag: string
-		count: string
-	}
-
-	type FollowUser = {
-		name: string
-		handle: string
-		avatar_url: string
-	}
+	import { type FollowUser, type TrendingItem } from '$lib/types'
 
 	const {
 		trending,
@@ -79,7 +69,7 @@
 					<button
 						class="follow-btn"
 						class:follow-btn-active={is_following}
-						onclick={() => on_toggle_follow?.(user.handle)}
+						onclick={() => on_toggle_follow?.(user.id)}
 					>
 						{is_following ? 'Following' : 'Follow'}
 					</button>

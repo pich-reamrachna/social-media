@@ -1,19 +1,22 @@
 import { db } from '$lib/server/db'
+import { user } from '$lib/server/db/auth.schema'
+import { type SideNavUser, type ProfilePost } from '$lib/types'
 import { post } from '$lib/server/db/post'
-import { like } from '$lib/server/db/interactions'
+import { like, follow } from '$lib/server/db/interactions'
 import {
 	consume_rate_limit,
 	get_rate_limit_error,
 	get_rate_limit_subject
 } from '$lib/server/rate-limit'
 import { fail, redirect } from '@sveltejs/kit'
-import { desc, and, eq, inArray, sql } from 'drizzle-orm'
+import { desc, and, eq, inArray, sql, notInArray } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 const UPLOAD_TIMEOUT_MS = 30_000
 const CREATE_POST_LIMIT = { limit: 5, windowMs: 60_000 }
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
+const TOGGLE_FOLLOW_LIMIT = { limit: 15, windowMs: 60_000 }
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
 type UploadedPostImage = {
@@ -151,91 +154,142 @@ const get_post_image_url = async (image: ValidatedImageUpload | undefined) => {
 
 const delete_uploaded_post_image = async (public_id: string | undefined) => {
 	if (!public_id) return
-
+	const { cloudinary } = await import('$lib/server/cloudinary')
 	try {
-		const { cloudinary } = await import('$lib/server/cloudinary')
 		await cloudinary.uploader.destroy(public_id)
-	} catch (cleanup_error) {
-		console.error('Failed to clean up uploaded post image:', cleanup_error)
+	} catch (error) {
+		console.error('Failed to cleanup Cloudinary image:', error)
 	}
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
-	const user = locals.user
-	if (!user) {
-		throw redirect(302, '/login')
+const map_home_post = (
+	p: {
+		id: string
+		author: {
+			id: string
+			name: string
+			username: string | null
+			email: string | null
+			image: string | null
+		}
+		content: string
+		imageUrl: string | null
+		createdAt: Date
+		shareCount: number
+		likeCount: number
+	},
+	liked_post_ids: Set<string>
+): ProfilePost => ({
+	id: p.id,
+	author: {
+		id: p.author.id,
+		name: p.author.name,
+		handle: p.author.username ?? p.author.email?.split('@')[0] ?? 'user',
+		avatar_url: p.author.image || `https://i.pravatar.cc/150?u=${p.author.id}`
+	},
+	content: p.content,
+	images: p.imageUrl ? [p.imageUrl] : [],
+	timestamp: p.createdAt,
+	is_liked_by_user: liked_post_ids.has(p.id),
+	stats: {
+		comments: 0,
+		echo_count: p.shareCount,
+		likes: p.likeCount
 	}
+})
 
-	const posts = await db.query.post.findMany({
-		with: {
-			author: true
-		},
+const load_home_follow_counts = async (user_id: string) => {
+	const [followers] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(follow)
+		.where(eq(follow.followingId, user_id))
+	const [following] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(follow)
+		.where(eq(follow.followerId, user_id))
+	return {
+		followers: followers?.count ?? 0,
+		following: following?.count ?? 0
+	}
+}
+
+const load_suggested_users = async (user_id: string) => {
+	const current_following = await db
+		.select({ id: follow.followingId })
+		.from(follow)
+		.where(eq(follow.followerId, user_id))
+
+	const excluded = [user_id, ...current_following.map((f) => f.id)]
+
+	const raw_users = await db.query.user.findMany({
+		where: notInArray(user.id, excluded),
+		limit: 5
+	})
+
+	return raw_users.map((u) => ({
+		id: u.id,
+		name: u.name,
+		handle: u.username || u.email?.split('@')[0] || 'user',
+		avatar_url: u.image || `https://i.pravatar.cc/150?u=${u.id}`
+	}))
+}
+
+export const load: PageServerLoad = async ({ locals }) => {
+	const user_local = locals.user
+	if (!user_local) throw redirect(302, '/login')
+
+	const posts_raw = await db.query.post.findMany({
+		with: { author: true },
 		orderBy: [desc(post.createdAt)]
 	})
 
-	const post_ids = posts.map((p) => p.id)
-	const viewer_likes = post_ids.length
-		? await db
-				.select({
-					post_id: like.postId
-				})
-				.from(like)
-				.where(and(eq(like.userId, user.id), inArray(like.postId, post_ids)))
-		: []
-	const liked_post_ids = new Set(viewer_likes.map((entry) => entry.post_id))
+	const post_ids = posts_raw.map((p) => p.id)
+	let liked_ids = new Set<string>()
 
-	// for now, just return some dummy data for trending
+	if (post_ids.length > 0) {
+		const likes_raw = await db
+			.select({ post_id: like.postId })
+			.from(like)
+			.where(and(eq(like.userId, user_local.id), inArray(like.postId, post_ids)))
+		liked_ids = new Set(likes_raw.map((l) => l.post_id))
+	}
+
+	const who_to_follow = await load_suggested_users(user_local.id)
+	const stats = await load_home_follow_counts(user_local.id)
+
 	const trending = [
 		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
 		{ category: 'ART · TRENDING', tag: '#DigitalNoir', count: '12.9K' },
 		{ category: 'MUSIC · TRENDING', tag: 'Synthetix Core', count: '8.1K' }
 	]
 
-	// for now, just return some dummy data for who to follow
-	const who_to_follow = [
-		{
-			name: 'Billie Eilish',
-			handle: 'billieeilish',
-			avatar_url: 'https://i.pravatar.cc/150?img=5'
-		},
-		{
-			name: 'Bad Bunny',
-			handle: 'badbunnypr',
-			avatar_url: 'https://i.pravatar.cc/150?img=60'
-		}
-	]
+	const current_user = {
+		id: user_local.id,
+		name: user_local.name,
+		handle: user_local.username || user_local.email?.split('@')[0] || 'user',
+		avatar_url: user_local.image || `https://i.pravatar.cc/150?u=${user_local.id}`,
+		stats
+	} as SideNavUser
 
 	return {
-		current_user: {
-			name: user.name,
-			handle: user.username || user.email?.split('@')[0] || 'user',
-			avatar_url: user.image || `https://i.pravatar.cc/150?u=${user.id}`
-		},
-		posts: posts.map((p) => ({
-			id: p.id,
-			author: {
-				name: p.author.name,
-				handle: p.author.username ?? p.author.email?.split('@')[0] ?? 'user',
-				avatar_url: p.author.image || `https://i.pravatar.cc/150?u=${p.author.id}`
-			},
-			content: p.content,
-			images: p.imageUrl ? [p.imageUrl] : [],
-			timestamp: p.createdAt,
-			is_liked_by_user: liked_post_ids.has(p.id),
-			stats: {
-				comments: 0,
-				echo_count: p.shareCount,
-				likes: p.likeCount
-			}
-		})),
+		current_user,
+		posts: posts_raw.map((p) => map_home_post(p, liked_ids)),
 		trending,
 		who_to_follow
 	}
 }
 
+const insert_post = async (content: string, image_url: string | undefined, user_id: string) => {
+	await db.insert(post).values({
+		content,
+		imageUrl: image_url,
+		userId: user_id
+	})
+}
+
 export const actions: Actions = {
 	// post content
-	createPost: async ({ request, locals }) => {
+	create_post: async ({ request, locals }) => {
 		const user = locals.user
 		if (!user) {
 			return fail(401, { message: 'Unauthorized' })
@@ -275,12 +329,7 @@ export const actions: Actions = {
 
 		try {
 			uploaded_image = await get_post_image_url(validated_image)
-
-			await db.insert(post).values({
-				content: payload.trimmed_content,
-				imageUrl: uploaded_image?.url,
-				userId: user.id
-			})
+			await insert_post(payload.trimmed_content, uploaded_image?.url, user.id)
 		} catch (error) {
 			await delete_uploaded_post_image(uploaded_image?.public_id)
 			console.error('Failed to create post:', error)
@@ -291,7 +340,7 @@ export const actions: Actions = {
 	},
 
 	// like shows (current have console.log to show if the like is working. can remove after)
-	toggleLike: async ({ request, locals }) => {
+	toggle_like: async ({ request, locals }) => {
 		const user = locals.user
 		if (!user) {
 			return fail(401)
@@ -353,6 +402,64 @@ export const actions: Actions = {
 			post_id,
 			is_liked: !existing_like,
 			likes: existing_like ? Math.max(0, current_post.likeCount - 1) : current_post.likeCount + 1
+		}
+	},
+
+	toggle_follow: async ({ request, locals }) => {
+		const user_locals = locals.user
+		if (!user_locals) {
+			return fail(401)
+		}
+
+		const rate_limit = await consume_rate_limit({
+			key: `toggle-follow:${get_rate_limit_subject(locals)}`,
+			...TOGGLE_FOLLOW_LIMIT
+		})
+		if (!rate_limit.ok) {
+			return fail(429, get_rate_limit_error(rate_limit.retryAfterSeconds))
+		}
+
+		const form_data = await request.formData()
+		const target_user_id = form_data.get('userId') as string
+
+		if (!target_user_id || target_user_id === user_locals.id) {
+			return fail(400)
+		}
+
+		// Check if the target user actually exists
+		const target_user = await db.query.user.findFirst({
+			where: eq(user.id, target_user_id)
+		})
+		if (!target_user) return fail(404)
+
+		const existing_follows = await db
+			.select()
+			.from(follow)
+			.where(and(eq(follow.followerId, user_locals.id), eq(follow.followingId, target_user_id)))
+			.limit(1)
+
+		const is_following = existing_follows.length > 0
+
+		try {
+			if (is_following) {
+				await db
+					.delete(follow)
+					.where(and(eq(follow.followerId, user_locals.id), eq(follow.followingId, target_user_id)))
+			} else {
+				await db.insert(follow).values({
+					followerId: user_locals.id,
+					followingId: target_user_id
+				})
+			}
+		} catch (error) {
+			console.error('toggleFollow database error:', error)
+			return fail(500)
+		}
+
+		return {
+			success: true,
+			target_user_id,
+			is_following: !is_following
 		}
 	}
 }
