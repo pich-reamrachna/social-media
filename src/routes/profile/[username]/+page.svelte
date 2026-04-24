@@ -44,12 +44,16 @@
 		return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 	}
 
+	// FIX 1: Explicitly check if the file exists to satisfy TypeScript
 	function handle_file_preview(event: Event, type: 'avatar' | 'banner') {
 		const input = event.target as HTMLInputElement
 		if (input.files && input.files.length > 0) {
-			const url = URL.createObjectURL(input.files[0])
-			if (type === 'avatar') avatar_preview = url
-			if (type === 'banner') banner_preview = url
+			const file = input.files[0]
+			if (file) {
+				const url = URL.createObjectURL(file)
+				if (type === 'avatar') avatar_preview = url
+				if (type === 'banner') banner_preview = url
+			}
 		}
 	}
 
@@ -206,9 +210,10 @@
 				src={data.profile.avatar_url}
 				alt={data.profile.name}
 				class="z-10 -mt-15 h-30 w-30 rounded-full border-4 border-[#0d0d0d] bg-[#1f1f1f] object-cover"
-				onerror={(e) =>
-					((e.currentTarget as HTMLImageElement).src =
-						`https://i.pravatar.cc/150?u=${data.profile.id}`)}
+				onerror={(e) => {
+					;(e.currentTarget as HTMLImageElement).src =
+						`https://i.pravatar.cc/150?u=${data.profile.id}`
+				}}
 			/>
 
 			<div class="mt-3">
@@ -248,7 +253,7 @@
 		<nav class="mt-2 flex justify-around border-b border-[#1f1f1f]">
 			{#each ['Posts', 'media', 'liked posts'] as tab (tab)}
 				<button
-					class="relative flex-1 py-4 text-[0.8rem] font-semibold tracking-[0.08em] uppercase transition-colors hover:bg-white/5
+					class="relative flex-1 cursor-pointer py-4 text-[0.8rem] font-semibold tracking-[0.08em] uppercase transition-colors hover:bg-white/5
                            {active_tab === tab ? 'text-[#f3f4f6]' : 'text-[#6b7280]'}"
 					onclick={() => select_tab(tab as 'Posts' | 'media' | 'liked posts')}
 				>
@@ -346,7 +351,7 @@
 		<div
 			class="fixed inset-0 z-50 flex items-center justify-center bg-[#0d0d0d]/80 px-4 backdrop-blur-sm"
 		>
-			<div class="w-full max-w-[600px] overflow-hidden rounded-2xl bg-[#161616] shadow-2xl">
+			<div class="w-full max-w-150 overflow-hidden rounded-2xl bg-[#161616] shadow-2xl">
 				<form
 					method="POST"
 					action="?/updateProfile"
@@ -371,6 +376,7 @@
 						<div class="flex items-center gap-6">
 							<button
 								type="button"
+								aria-label="Close edit profile modal"
 								class="cursor-pointer text-gray-400 transition-colors hover:text-white"
 								onclick={() => {
 									is_edit_modal_open = false
@@ -393,7 +399,7 @@
 						<button
 							type="submit"
 							disabled={is_saving_profile}
-							class="cursor-pointer rounded-full bg-gradient-to-r from-[#ff3377] to-[#ff5588] px-5 py-1.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+							class="cursor-pointer rounded-full bg-linear-to-r from-[#ff3377] to-[#ff5588] px-5 py-1.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
 						>
 							{is_saving_profile ? 'SAVING...' : 'SAVE'}
 						</button>
@@ -508,10 +514,8 @@
 									name="bio"
 									rows="3"
 									class="resize-none rounded-lg border border-[#333] bg-[#0a0a0a] px-3 py-3 text-[0.95rem] text-[#f3f4f6] focus:border-[#ff3377] focus:ring-1 focus:ring-[#ff3377] focus:outline-none"
-									>{data.profile.bio === 'This user has no bio yet.'
-										? ''
-										: data.profile.bio}</textarea
-								>
+									value={data.profile.bio === 'This user has no bio yet.' ? '' : data.profile.bio}
+								></textarea>
 							</div>
 						</div>
 					</div>
