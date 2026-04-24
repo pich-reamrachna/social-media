@@ -44,17 +44,16 @@
 		return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 	}
 
-	// FIX 1: Explicitly check if the file exists to satisfy TypeScript
 	function handle_file_preview(event: Event, type: 'avatar' | 'banner') {
 		const input = event.target as HTMLInputElement
-		if (input.files && input.files.length > 0) {
-			const file = input.files[0]
-			if (file) {
-				const url = URL.createObjectURL(file)
-				if (type === 'avatar') avatar_preview = url
-				if (type === 'banner') banner_preview = url
-			}
-		}
+		if (!input.files || input.files.length === 0) return
+
+		const file = input.files[0]
+		if (!file) return
+
+		const url = URL.createObjectURL(file)
+		if (type === 'avatar') avatar_preview = url
+		if (type === 'banner') banner_preview = url
 	}
 
 	const displayed_posts = $derived.by(() => {
@@ -366,7 +365,13 @@
 								avatar_preview = ''
 								banner_preview = ''
 							} else if (result.type === 'failure') {
-								form_error = result.data?.message || 'Failed to save profile'
+								form_error =
+									result.data &&
+									typeof result.data === 'object' &&
+									'message' in result.data &&
+									typeof result.data.message === 'string'
+										? result.data.message
+										: 'Failed to save profile'
 							}
 							await update()
 						}
