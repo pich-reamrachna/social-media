@@ -9,11 +9,11 @@ import {
 	get_rate_limit_subject
 } from '$lib/server/rate-limit'
 import { dev } from '$app/environment'
+import { PROFILE_POSTS_LIMIT } from '$lib/constants/post'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql, notInArray } from 'drizzle-orm'
 import type { Actions, PageServerLoad } from './$types'
 
-const PROFILE_POSTS_LIMIT = 20
 const PROFILE_LIKED_POSTS_LIMIT = 20
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
 const TOGGLE_FOLLOW_LIMIT = { limit: 15, windowMs: 60_000 }

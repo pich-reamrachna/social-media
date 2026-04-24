@@ -8,6 +8,7 @@ import {
 	get_rate_limit_error,
 	get_rate_limit_subject
 } from '$lib/server/rate-limit'
+import { FEED_LIMIT } from '$lib/constants/post'
 import { fail, redirect } from '@sveltejs/kit'
 import { desc, and, eq, inArray, sql, notInArray } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
@@ -240,7 +241,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const posts_raw = await db.query.post.findMany({
 		with: { author: true },
-		orderBy: [desc(post.createdAt)]
+		orderBy: [desc(post.createdAt)],
+		limit: FEED_LIMIT
 	})
 
 	const post_ids = posts_raw.map((p) => p.id)

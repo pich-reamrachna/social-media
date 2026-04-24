@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { deserialize } from '$app/forms'
+	import { invalidateAll } from '$app/navigation'
 	import { resolve } from '$app/paths'
 
 	import SideNav from '$lib/components/SideNav.svelte'
@@ -178,11 +179,14 @@
 			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
 			const result = deserialize(await response.text())
 
-			if (result.type !== 'success') throw new Error()
+			if (result.type !== 'success') {
+				console.error('[toggle_follow] failed', result)
+				throw new Error('Follow failed')
+			}
 
-			window.location.reload()
-		} catch {
-			// error state handled by page refresh or toast
+			await invalidateAll()
+		} catch (e) {
+			console.error('[toggle_follow] error', e)
 		}
 	}
 </script>
