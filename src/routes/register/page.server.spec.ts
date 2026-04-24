@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => {
 
 	return {
 		sign_up_email: vi.fn(),
+		send_email: vi.fn().mockResolvedValue(undefined),
 		peek_rate_limit: vi.fn(),
 		consume_rate_limit: vi.fn(),
 		get_rate_limit_error: vi.fn((retry_after_seconds: number, message = 'Too many requests.') => ({
@@ -26,6 +27,14 @@ vi.mock('$lib/server/rate-limit', () => ({
 	peek_rate_limit: mocks.peek_rate_limit,
 	consume_rate_limit: mocks.consume_rate_limit,
 	get_rate_limit_error: mocks.get_rate_limit_error
+}))
+
+vi.mock('$lib/server/email', () => ({
+	send_email: mocks.send_email
+}))
+
+vi.mock('$env/dynamic/private', () => ({
+	env: { ORIGIN: 'http://localhost' }
 }))
 
 vi.mock('better-auth/api', () => ({
@@ -120,52 +129,46 @@ describe('register actions', () => {
 		})
 	})
 
-	it('returns a generic message when sign up fails on duplicate email', async () => {
+	it('redirects silently and sends account-exists email on duplicate email', async () => {
 		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Email already exists'))
 
 		const { actions } = await import('./+page.server')
 		const default_action = actions.default!
-		const result = await default_action(
-			create_event({
-				username: 'new-user',
-				email: 'existing@example.com',
-				password: 'ValidPassword1!',
-				confirm_password: 'ValidPassword1!'
-			}) as never
-		)
+		await expect(
+			default_action(
+				create_event({
+					username: 'new-user',
+					email: 'existing@example.com',
+					password: 'ValidPassword1!',
+					confirm_password: 'ValidPassword1!'
+				}) as never
+			)
+		).rejects.toMatchObject({ status: 302, location: '/login?verification=sent' })
 
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				message: 'Account already exists',
-				username: 'new-user',
-				email: 'existing@example.com'
-			}
-		})
+		expect(mocks.send_email).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'existing@example.com' })
+		)
 	})
 
-	it('returns a generic message when sign up fails on duplicate username and email', async () => {
+	it('redirects silently and sends account-exists email on duplicate username and email', async () => {
 		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Username and email already exist'))
 
 		const { actions } = await import('./+page.server')
 		const default_action = actions.default!
-		const result = await default_action(
-			create_event({
-				username: 'existing-user',
-				email: 'existing@example.com',
-				password: 'ValidPassword1!',
-				confirm_password: 'ValidPassword1!'
-			}) as never
-		)
+		await expect(
+			default_action(
+				create_event({
+					username: 'existing-user',
+					email: 'existing@example.com',
+					password: 'ValidPassword1!',
+					confirm_password: 'ValidPassword1!'
+				}) as never
+			)
+		).rejects.toMatchObject({ status: 302, location: '/login?verification=sent' })
 
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				message: 'Account already exists',
-				username: 'existing-user',
-				email: 'existing@example.com'
-			}
-		})
+		expect(mocks.send_email).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'existing@example.com' })
+		)
 	})
 
 	it('redirects to login when sign up succeeds', async () => {
