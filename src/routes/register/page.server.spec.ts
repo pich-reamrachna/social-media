@@ -104,9 +104,42 @@ describe('register actions', () => {
 
 		expect(result).toMatchObject({
 			status: 400,
-			data: { message: 'Email address appears to be invalid. Please check the domain.' }
+			data: {
+				message: 'Email address appears to be invalid. Please check the domain.',
+				username: 'new-user',
+				email: 'new@fakeinvaliddomain99999.xyz'
+			}
 		})
 		expect(mocks.sign_up_email).not.toHaveBeenCalled()
+	})
+
+	it('keeps submitted fields when registration failures hit the rate limit', async () => {
+		mocks.consume_rate_limit.mockResolvedValue({
+			ok: false,
+			remaining: 0,
+			reset_at: 0,
+			retryAfterSeconds: 45
+		})
+
+		const { actions } = await import('./+page.server')
+		const default_action = actions.default!
+		const result = await default_action(
+			create_event({
+				username: 'new-user',
+				email: 'new@example.com',
+				password: 'weak',
+				confirm_password: 'weak'
+			}) as never
+		)
+
+		expect(result).toMatchObject({
+			status: 429,
+			data: {
+				message: 'Too many registration attempts. Try again in 45 seconds.',
+				username: 'new-user',
+				email: 'new@example.com'
+			}
+		})
 	})
 
 	it('keeps password mismatch errors specific', async () => {

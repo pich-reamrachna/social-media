@@ -89,7 +89,8 @@ describe('login actions', () => {
 			status: 400,
 			data: {
 				message: 'Invalid username or password',
-				username: 'existing-user'
+				username: 'existing-user',
+				should_remember_me: false
 			}
 		})
 		expect(mocks.consume_rate_limit).toHaveBeenCalledTimes(2)
@@ -112,10 +113,47 @@ describe('login actions', () => {
 			data: {
 				message:
 					'Please verify your email before signing in. Check your inbox for a verification link.',
-				username: 'existing-user'
+				username: 'existing-user',
+				should_remember_me: false
 			}
 		})
 		expect(mocks.consume_rate_limit).toHaveBeenCalledTimes(2)
+	})
+
+	it('keeps submitted fields when login failures hit the rate limit', async () => {
+		mocks.sign_in_username.mockRejectedValue(new mocks.APIError('User not found'))
+		mocks.consume_rate_limit
+			.mockResolvedValueOnce({
+				ok: true,
+				remaining: 4,
+				reset_at: 0,
+				retryAfterSeconds: 0
+			})
+			.mockResolvedValueOnce({
+				ok: false,
+				remaining: 0,
+				reset_at: 0,
+				retryAfterSeconds: 30
+			})
+
+		const { actions } = await import('./+page.server')
+		const default_action = actions.default!
+		const result = await default_action(
+			create_event({
+				username: 'existing-user',
+				password: 'wrong-password',
+				should_remember_me: 'on'
+			}) as never
+		)
+
+		expect(result).toMatchObject({
+			status: 429,
+			data: {
+				message: 'Too many login attempts. Try again in 30 seconds.',
+				username: 'existing-user',
+				should_remember_me: true
+			}
+		})
 	})
 
 	it('redirects to home when login succeeds', async () => {
@@ -127,7 +165,8 @@ describe('login actions', () => {
 			default_action(
 				create_event({
 					username: 'existing-user',
-					password: 'CorrectPassword1!'
+					password: 'CorrectPassword1!',
+					should_remember_me: 'on'
 				}) as never
 			)
 		).rejects.toMatchObject({
@@ -138,7 +177,7 @@ describe('login actions', () => {
 			body: {
 				username: 'existing-user',
 				password: 'CorrectPassword1!',
-				rememberMe: false
+				rememberMe: true
 			}
 		})
 	})

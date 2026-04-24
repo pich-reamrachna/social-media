@@ -54,19 +54,20 @@ const get_register_error_message = (error_message: string | undefined) => {
 }
 
 const get_register_rate_limit_failure = async (
-	consume_failed_attempt: () => ReturnType<typeof consume_rate_limit>
+	consume_failed_attempt: () => ReturnType<typeof consume_rate_limit>,
+	values: { username: string; email: string }
 ) => {
 	const failed_attempt_rate_limit = await consume_failed_attempt()
 
 	return failed_attempt_rate_limit.ok
 		? undefined
-		: fail(
-				429,
-				get_rate_limit_error(
+		: fail(429, {
+				...get_rate_limit_error(
 					failed_attempt_rate_limit.retryAfterSeconds,
 					'Too many registration attempts.'
-				)
-			)
+				),
+				...values
+			})
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -92,6 +93,7 @@ export const actions: Actions = {
 		const email = get_string(form_data, 'email')
 		const password = get_string(form_data, 'password')
 		const confirm_password = get_string(form_data, 'confirm_password')
+		const submitted_values = { username, email }
 		const consume_failed_attempt = async () =>
 			consume_rate_limit({
 				key: rate_limit_key,
@@ -100,28 +102,32 @@ export const actions: Actions = {
 
 		const password_strength_errors = validate_password_strength(password)
 		if (password_strength_errors.length > 0) {
-			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
+			const rate_limit_failure = await get_register_rate_limit_failure(
+				consume_failed_attempt,
+				submitted_values
+			)
 			if (rate_limit_failure) return rate_limit_failure
 
 			return fail(400, {
 				message: `Password must include ${password_strength_errors.join(', ')}`,
-				username,
-				email
+				...submitted_values
 			})
 		}
 
 		if (password !== confirm_password) {
-			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
+			const rate_limit_failure = await get_register_rate_limit_failure(
+				consume_failed_attempt,
+				submitted_values
+			)
 			if (rate_limit_failure) return rate_limit_failure
 
-			return fail(400, { message: 'Passwords do not match', username, email })
+			return fail(400, { message: 'Passwords do not match', ...submitted_values })
 		}
 
 		if (!(await domain_has_mx_records(email))) {
 			return fail(400, {
 				message: 'Email address appears to be invalid. Please check the domain.',
-				username,
-				email
+				...submitted_values
 			})
 		}
 
@@ -136,10 +142,13 @@ export const actions: Actions = {
 			})
 		} catch (error) {
 			if (!(error instanceof APIError)) {
-				return fail(500, { message: 'Unexpected error', username, email })
+				return fail(500, { message: 'Unexpected error', ...submitted_values })
 			}
 
-			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
+			const rate_limit_failure = await get_register_rate_limit_failure(
+				consume_failed_attempt,
+				submitted_values
+			)
 			if (rate_limit_failure) return rate_limit_failure
 
 			if (error.message.toLowerCase().includes('email')) {
@@ -166,8 +175,7 @@ export const actions: Actions = {
 
 			return fail(400, {
 				message: get_register_error_message(error.message),
-				username,
-				email
+				...submitted_values
 			})
 		}
 

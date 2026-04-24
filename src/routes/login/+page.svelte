@@ -9,6 +9,11 @@
 
 	const { form, data } = $props<{ form: ActionData; data: PageData }>()
 
+	$effect(() => {
+		username = form?.username ?? ''
+		should_remember_me = form?.should_remember_me ?? false
+	})
+
 	// toggle show password
 	const toggle_password = () => {
 		is_show_password = !is_show_password
@@ -197,6 +202,7 @@
 						<input
 							type="checkbox"
 							id="should_remember_me"
+							name="should_remember_me"
 							bind:checked={should_remember_me}
 							class="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-700 bg-transparent transition-all checked:border-[#ff5c8d] checked:bg-[#ff5c8d]"
 						/>

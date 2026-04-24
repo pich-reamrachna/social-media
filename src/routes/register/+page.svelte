@@ -28,6 +28,11 @@
 
 	const { form } = $props<{ form: ActionData }>()
 
+	$effect(() => {
+		email = form?.email ?? ''
+		username = form?.username ?? ''
+	})
+
 	const check_email = (value: string) => {
 		const trimmed = value.trim()
 
