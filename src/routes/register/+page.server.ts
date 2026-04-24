@@ -1,3 +1,4 @@
+import { resolveMx } from 'node:dns/promises'
 import { fail, redirect } from '@sveltejs/kit'
 import { APIError } from 'better-auth/api'
 import { auth } from '$lib/server/auth'
@@ -10,6 +11,17 @@ import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 const REGISTER_LIMIT = { limit: 3, windowMs: 60_000 }
 const DUPLICATE_ACCOUNT_ERROR = 'Account already exists'
 const DUPLICATE_USERNAME_ERROR = 'Username already taken'
+
+const domain_has_mx_records = async (email: string): Promise<boolean> => {
+	const domain = email.slice(email.lastIndexOf('@') + 1).toLowerCase()
+	if (!domain) return false
+	try {
+		const records = await resolveMx(domain)
+		return records.length > 0
+	} catch {
+		return false
+	}
+}
 
 const get_string = (formData: FormData, key: string) => {
 	const value = formData.get(key)
@@ -103,6 +115,14 @@ export const actions: Actions = {
 			if (rate_limit_failure) return rate_limit_failure
 
 			return fail(400, { message: 'Passwords do not match', username, email })
+		}
+
+		if (!(await domain_has_mx_records(email))) {
+			return fail(400, {
+				message: 'Email address appears to be invalid. Please check the domain.',
+				username,
+				email
+			})
 		}
 
 		try {

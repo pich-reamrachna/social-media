@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
 	return {
 		sign_up_email: vi.fn(),
 		send_email: vi.fn().mockResolvedValue(undefined),
+		resolve_mx: vi.fn().mockResolvedValue([{ exchange: 'mail.example.com', priority: 10 }]),
 		peek_rate_limit: vi.fn(),
 		consume_rate_limit: vi.fn(),
 		get_rate_limit_error: vi.fn((retry_after_seconds: number, message = 'Too many requests.') => ({
@@ -33,6 +34,10 @@ vi.mock('$lib/server/email', () => ({
 	send_email: mocks.send_email
 }))
 
+vi.mock('node:dns/promises', () => ({
+	resolveMx: mocks.resolve_mx
+}))
+
 vi.mock('$env/dynamic/private', () => ({
 	env: { ORIGIN: 'http://localhost' }
 }))
@@ -46,6 +51,7 @@ describe('register actions', () => {
 		vi.resetModules()
 		vi.clearAllMocks()
 
+		mocks.resolve_mx.mockResolvedValue([{ exchange: 'mail.example.com', priority: 10 }])
 		mocks.peek_rate_limit.mockResolvedValue({
 			ok: true,
 			remaining: 3,
@@ -81,6 +87,27 @@ describe('register actions', () => {
 			}
 		}
 	}
+
+	it('rejects email with no MX records', async () => {
+		mocks.resolve_mx.mockResolvedValue([])
+
+		const { actions } = await import('./+page.server')
+		const default_action = actions.default!
+		const result = await default_action(
+			create_event({
+				username: 'new-user',
+				email: 'new@fakeinvaliddomain99999.xyz',
+				password: 'ValidPassword1!',
+				confirm_password: 'ValidPassword1!'
+			}) as never
+		)
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: { message: 'Email address appears to be invalid. Please check the domain.' }
+		})
+		expect(mocks.sign_up_email).not.toHaveBeenCalled()
+	})
 
 	it('keeps password mismatch errors specific', async () => {
 		const { actions } = await import('./+page.server')
