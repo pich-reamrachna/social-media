@@ -31,7 +31,12 @@ export const send_email = async ({ to, subject, html, text }: EmailPayload) => {
 	if (!api_key || !from) {
 		if (dev) {
 			console.info(
-				`[email:dev-fallback] Missing RESEND_API_KEY or EMAIL_FROM. Skipping outbound email send.`
+				[
+					`[email:dev-fallback] No RESEND_API_KEY/EMAIL_FROM — printing email instead of sending.`,
+					`  To: ${to}`,
+					`  Subject: ${subject}`,
+					`  Body:\n${text}`
+				].join('\n')
 			)
 			return
 		}

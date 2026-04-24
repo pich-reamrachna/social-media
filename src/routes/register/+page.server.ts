@@ -1,8 +1,9 @@
-// src/routes/register/+page.server.ts
 import { fail, redirect } from '@sveltejs/kit'
 import { APIError } from 'better-auth/api'
 import { auth } from '$lib/server/auth'
 import { consume_rate_limit, get_rate_limit_error, peek_rate_limit } from '$lib/server/rate-limit'
+import { send_email } from '$lib/server/email'
+import { env } from '$env/dynamic/private'
 import type { Actions, PageServerLoad } from './$types'
 import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
@@ -120,6 +121,28 @@ export const actions: Actions = {
 
 			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
 			if (rate_limit_failure) return rate_limit_failure
+
+			if (error.message.toLowerCase().includes('email')) {
+				const login_url = `${env.ORIGIN}/login`
+				send_email({
+					to: email,
+					subject: 'Your Y account already exists',
+					text: `Someone tried to create a Y account using this email, but you already have one. Sign in at: ${login_url}`,
+					html: `
+						<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+							<h1 style="margin-bottom: 16px;">Account already exists</h1>
+							<p style="margin-bottom: 16px;">
+								Someone tried to create a Y account using this email, but you already have one.
+							</p>
+							<p style="margin-bottom: 24px;">
+								<a href="${login_url}" style="color: #db2777;">Sign in to your account</a>
+							</p>
+							<p>If this wasn't you, you can safely ignore this email.</p>
+						</div>
+					`
+				}).catch((e) => console.error('[register] account-exists email failed:', e))
+				throw redirect(302, '/login?verification=sent')
+			}
 
 			return fail(400, {
 				message: get_register_error_message(error.message),
