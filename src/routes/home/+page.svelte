@@ -11,7 +11,7 @@
 	import { deserialize } from '$app/forms'
 
 	import type { PageData } from './$types'
-	import { type SideNavUser, type ProfilePost, type TrendingItem } from '$lib/types'
+	import { type SideNavUser, type ProfilePost } from '$lib/types'
 	const {
 		data
 	}: {
@@ -19,7 +19,6 @@
 			current_user: SideNavUser
 			posts: ProfilePost[]
 			who_to_follow: SideNavUser[]
-			trending: TrendingItem[]
 		}
 	} = $props()
 
@@ -511,7 +510,6 @@
 	</main>
 
 	<RightSidebar
-		trending={data.trending}
 		{who_to_follow}
 		{search_query}
 		search_users={search_results}

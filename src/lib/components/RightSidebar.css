@@ -36,52 +36,6 @@
 	margin: 0 0 0.875rem;
 }
 
-.trending-list {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	display: flex;
-	flex-direction: column;
-}
-
-.trending-item {
-	display: flex;
-	flex-direction: column;
-	gap: 0.1rem;
-	padding: 0.6rem 0.5rem;
-	border-bottom: 1px solid #1f1f1f;
-	border-radius: 0.5rem;
-	cursor: pointer;
-	transition: background-color 0.15s;
-}
-
-.trending-item:last-child {
-	border-bottom: none;
-}
-
-.trending-item:hover {
-	background-color: rgba(255, 255, 255, 0.04);
-}
-
-.trending-category {
-	font-size: 0.65rem;
-	font-weight: 600;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	color: #6b7280;
-}
-
-.trending-tag {
-	font-size: 0.875rem;
-	font-weight: 700;
-	color: #f3f4f6;
-}
-
-.trending-count {
-	font-size: 0.72rem;
-	color: #6b7280;
-}
-
 .follow-list {
 	list-style: none;
 	margin: 0;

@@ -11,8 +11,6 @@ export type ProfilePost = {
 	timestamp: Date
 	is_liked_by_user: boolean
 	stats: {
-		comments: number
-		echo_count: number
 		likes: number
 	}
 }
@@ -45,9 +43,3 @@ export type FollowUser = {
 }
 
 export type SideNavUser = FollowUser
-
-export type TrendingItem = {
-	category: string
-	tag: string
-	count: string
-}
