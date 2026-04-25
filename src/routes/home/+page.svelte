@@ -332,7 +332,6 @@
 	<section class="mobile-prelude" aria-label="Top feed section">
 		<div class="mobile-header">
 			<span class="mobile-logo">Y</span>
-			<img src={current_user?.avatar_url} alt={current_user?.name ?? ''} class="mobile-avatar" />
 		</div>
 	</section>
 
