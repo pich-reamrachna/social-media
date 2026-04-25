@@ -50,3 +50,34 @@ export const share_relations = relations(share, ({ one }) => ({
 	post: one(post, { fields: [share.postId], references: [post.id] }),
 	user: one(user, { fields: [share.userId], references: [user.id] })
 }))
+
+/**
+ * Follow Table
+ * Tracks follower/following relationships between users.
+ */
+export const follow = pgTable(
+	'follow',
+	{
+		followerId: text('follower_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		followingId: text('following_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(t) => [primaryKey({ columns: [t.followerId, t.followingId] })]
+)
+
+export const follow_relations = relations(follow, ({ one }) => ({
+	follower: one(user, {
+		fields: [follow.followerId],
+		references: [user.id],
+		relationName: 'follower'
+	}),
+	following: one(user, {
+		fields: [follow.followingId],
+		references: [user.id],
+		relationName: 'following'
+	})
+}))

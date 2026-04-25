@@ -1,22 +1,25 @@
 import { db } from '$lib/server/db'
-import { user } from '$lib/server/db/auth.schema'
+import { user as userTable } from '$lib/server/db/auth.schema'
+import { type SideNavUser, type ProfileData, type ProfilePost } from '$lib/types'
 import { post } from '$lib/server/db/post'
-import { like } from '$lib/server/db/interactions'
+import { like, follow } from '$lib/server/db/interactions'
 import {
 	consume_rate_limit,
 	get_rate_limit_error,
 	get_rate_limit_subject
 } from '$lib/server/rate-limit'
 import { dev } from '$app/environment'
+import { PROFILE_POSTS_LIMIT } from '$lib/constants/post'
 import { error, fail } from '@sveltejs/kit'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import { upload_cloudinary } from '$lib/server/cloudinary'
 import { MAX_BIO_LENGTH, validate_username } from '$lib/constants/auth'
 import type { Actions, PageServerLoad } from './$types'
 
-const PROFILE_POSTS_LIMIT = 20
 const PROFILE_LIKED_POSTS_LIMIT = 20
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
+const TOGGLE_FOLLOW_LIMIT = { limit: 15, windowMs: 60_000 }
+const WHO_TO_FOLLOW_LIMIT = 6
 
 // --- PROFILE LOADING LOGIC ---
 const log_dev_duration = (label: string, started_at: number) => {
@@ -28,14 +31,14 @@ const log_dev_duration = (label: string, started_at: number) => {
 const load_profile_user = async (target_username: string) => {
 	const started_at = dev ? performance.now() : 0
 	const profile_user = await db.query.user.findFirst({
-		where: eq(user.username, target_username)
+		where: eq(userTable.username, target_username)
 	})
 	log_dev_duration('[profile.load] profile user query took', started_at)
 	return profile_user
 }
 
 const get_uploaded_profile_images = async (avatar_file: File | null, banner_file: File | null) => {
-	const uploaded: Pick<Partial<typeof user.$inferSelect>, 'image' | 'banner'> = {}
+	const uploaded: Pick<Partial<typeof userTable.$inferSelect>, 'image' | 'banner'> = {}
 
 	if (avatar_file instanceof File && avatar_file.size > 0) {
 		uploaded.image = await upload_cloudinary(avatar_file, 'avatars')
@@ -46,6 +49,21 @@ const get_uploaded_profile_images = async (avatar_file: File | null, banner_file
 	}
 
 	return uploaded
+}
+
+const load_follow_counts = async (user_id: string) => {
+	const [follower_res] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(follow)
+		.where(eq(follow.followingId, user_id))
+	const [following_res] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(follow)
+		.where(eq(follow.followerId, user_id))
+	return {
+		followers: Number(follower_res?.count ?? 0),
+		following: Number(following_res?.count ?? 0)
+	}
 }
 
 const load_profile_posts = async (user_id: string) => {
@@ -86,8 +104,8 @@ const load_viewer_likes = async (post_ids: string[], viewer_id?: string) => {
 	return new Set(viewer_likes.map((entry) => entry.post_id))
 }
 
-const map_post_for_frontend = <
-	TPost extends {
+const map_post_for_frontend = (
+	post_row: {
 		id: string
 		content: string
 		imageUrl: string | null
@@ -100,15 +118,14 @@ const map_post_for_frontend = <
 			username: string | null
 			image: string | null
 		}
-	}
->(
-	post_row: TPost,
+	},
 	liked_post_ids: Set<string>
-) => ({
+): ProfilePost => ({
 	id: post_row.id,
 	author: {
+		id: post_row.author.id,
 		name: post_row.author.name,
-		handle: post_row.author.username,
+		handle: post_row.author.username || 'user',
 		avatar_url: post_row.author.image || `https://i.pravatar.cc/150?u=${post_row.author.id}`
 	},
 	content: post_row.content,
@@ -122,79 +139,137 @@ const map_post_for_frontend = <
 	}
 })
 
-export const load: PageServerLoad = async ({ params, locals }) => {
-	const load_started_at = dev ? performance.now() : 0
-	const viewer = locals.user
-	const target_username = params.username
+const load_profile_and_stats = async (target_username: string) => {
+	const user = await load_profile_user(target_username)
+	if (!user) throw error(404, { message: 'Profile not found' })
+	const stats = await load_follow_counts(user.id)
+	return { user, stats }
+}
 
-	const profile_user = await load_profile_user(target_username)
+const map_current_user = (
+	viewer: App.Locals['user'],
+	stats: { followers: number; following: number }
+): SideNavUser | undefined => {
+	if (!viewer) return undefined
+	return {
+		id: viewer.id,
+		name: viewer.name,
+		handle: viewer.username || viewer.email?.split('@')[0] || 'user',
+		avatar_url: viewer.image || `https://i.pravatar.cc/150?u=${viewer.id}`,
+		stats
+	}
+}
 
-	if (!profile_user) {
-		throw error(404, { message: 'Profile not found' })
+const load_who_to_follow = async (viewer_id: string | undefined, profile_id: string) => {
+	if (!viewer_id) return []
+
+	const current_following = await db
+		.select({ id: follow.followingId })
+		.from(follow)
+		.where(eq(follow.followerId, viewer_id))
+	const following_ids = current_following.map((entry) => entry.id)
+	const suggestion_conditions = [
+		sql`${userTable.id} != ${viewer_id}`,
+		sql`${userTable.id} != ${profile_id}`,
+		sql`${userTable.username} is not null`
+	]
+
+	if (following_ids.length > 0) {
+		suggestion_conditions.push(notInArray(userTable.id, following_ids))
 	}
 
-	const is_owner = viewer ? viewer.id === profile_user.id : false
+	const suggestions = await db.query.user.findMany({
+		where: and(...suggestion_conditions),
+		orderBy: [desc(userTable.createdAt)],
+		limit: WHO_TO_FOLLOW_LIMIT
+	})
 
-	const profile_posts = await load_profile_posts(profile_user.id)
-	const all_post_ids = profile_posts.map((p) => p.id)
+	return suggestions.map(
+		(suggested_user): SideNavUser => ({
+			id: suggested_user.id,
+			name: suggested_user.name,
+			handle: suggested_user.username!,
+			avatar_url: suggested_user.image || `https://i.pravatar.cc/150?u=${suggested_user.id}`,
+			is_following: false
+		})
+	)
+}
 
-	const liked_post_ids = await load_viewer_likes(all_post_ids, viewer?.id)
+const map_profile_data = (
+	user: {
+		id: string
+		name: string
+		username: string | null
+		email: string | null
+		image: string | null
+		bio: string | null
+		banner: string | null
+		createdAt: Date
+	},
+	stats: { followers: number; following: number }
+): ProfileData => ({
+	id: user.id,
+	name: user.name,
+	handle: user.username || user.email?.split('@')[0] || 'user',
+	bio: user.bio || 'This user has no bio yet.',
+	banner_url:
+		user.banner ||
+		'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop',
+	avatar_url: user.image || `https://i.pravatar.cc/150?u=${user.id}`,
+	joined_date: user.createdAt,
+	stats
+})
+
+const load_viewer_context = async (viewer: App.Locals['user'], profile_id: string) => {
+	if (!viewer) return { stats: { followers: 0, following: 0 }, is_following: false }
+	const stats = await load_follow_counts(viewer.id)
+	const f_check = await db.query.follow.findFirst({
+		where: and(eq(follow.followerId, viewer.id), eq(follow.followingId, profile_id))
+	})
+	return { stats, is_following: !!f_check }
+}
+
+export const load: PageServerLoad = async ({ params, locals }) => {
+	const started = dev ? performance.now() : 0
+	const viewer = locals.user
+	const { user: profile_user, stats: profile_stats } = await load_profile_and_stats(params.username)
+
+	const is_owner = viewer?.id === profile_user.id
+	const { stats: v_stats, is_following } = await load_viewer_context(viewer, profile_user.id)
+	const who_to_follow = await load_who_to_follow(viewer?.id, profile_user.id)
+
+	const posts_raw = await load_profile_posts(profile_user.id)
+	const liked_ids = await load_viewer_likes(
+		posts_raw.map((p) => p.id),
+		viewer?.id
+	)
+
 	const trending = [
 		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
 		{ category: 'ART · TRENDING', tag: '#DigitalNoir', count: '12.9K' },
 		{ category: 'MUSIC · TRENDING', tag: 'Synthetix Core', count: '8.1K' }
 	]
 
-	const who_to_follow = [
-		{
-			name: 'Billie Eilish',
-			handle: 'billieeilish',
-			avatar_url: 'https://i.pravatar.cc/150?img=5'
-		},
-		{ name: 'Bad Bunny', handle: 'badbunnypr', avatar_url: 'https://i.pravatar.cc/150?img=60' }
-	]
+	if (dev) log_dev_duration('[profile.load] total load took', started)
 
-	const result = {
-		current_user: viewer
-			? {
-					name: viewer.name,
-					handle: viewer.username,
-					avatar_url: viewer.image || `https://i.pravatar.cc/150?u=${viewer.id}`
-				}
-			: undefined,
+	return {
+		current_user: map_current_user(viewer, v_stats),
 		is_owner,
-		profile: {
-			id: profile_user.id,
-			name: profile_user.name,
-			handle: profile_user.username,
-			bio: profile_user.bio || 'This user has no bio yet.',
-			banner_url:
-				profile_user.banner ||
-				'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop',
-			avatar_url: profile_user.image || `https://i.pravatar.cc/150?u=${profile_user.id}`,
-			joined_date: profile_user.createdAt
-		},
-		posts: profile_posts.map((entry) => map_post_for_frontend(entry, liked_post_ids)),
+		is_following,
+		profile: map_profile_data(profile_user, profile_stats),
+		posts: posts_raw.map((entry) => map_post_for_frontend(entry, liked_ids)),
 		trending,
 		who_to_follow
 	}
-
-	if (dev) {
-		console.info(
-			`[profile.load] total load took ${Math.round(performance.now() - load_started_at)}ms`
-		)
-	}
-
-	return result
 }
 
 export const actions: Actions = {
-	loadLikedPosts: async ({ params, locals }) => {
+	load_liked_posts_action: async ({ params, locals }) => {
 		const viewer = locals.user
 		const target_username = params.username
 
 		const profile_user = await db.query.user.findFirst({
-			where: eq(user.username, target_username)
+			where: eq(userTable.username, target_username)
 		})
 
 		if (!profile_user) {
@@ -210,7 +285,7 @@ export const actions: Actions = {
 			liked_posts: liked_posts.map((entry) => map_post_for_frontend(entry, liked_post_ids))
 		}
 	},
-	toggleLike: async ({ request, locals }) => {
+	toggle_like: async ({ request, locals }) => {
 		const viewer = locals.user
 		if (!viewer) {
 			return fail(401, { message: 'Unauthorized' })
@@ -262,9 +337,57 @@ export const actions: Actions = {
 
 		return { success: true }
 	},
+	toggle_follow: async ({ request, locals }) => {
+		const viewer = locals.user
+		if (!viewer) {
+			return fail(401, { message: 'Unauthorized' })
+		}
 
-	// Update profile
-	// Update profile
+		const rate_limit = await consume_rate_limit({
+			key: `toggle-follow:${get_rate_limit_subject(locals)}`,
+			...TOGGLE_FOLLOW_LIMIT
+		})
+		if (!rate_limit.ok) {
+			return fail(429, get_rate_limit_error(rate_limit.retryAfterSeconds))
+		}
+
+		const form_data = await request.formData()
+		const target_user_id = form_data.get('userId')
+
+		if (typeof target_user_id !== 'string' || !target_user_id || target_user_id === viewer.id) {
+			return fail(400, { message: 'Invalid follow request' })
+		}
+
+		const target_user = await db.query.user.findFirst({
+			where: eq(userTable.id, target_user_id)
+		})
+		if (!target_user) return fail(404, { message: 'User not found' })
+
+		let is_following = false
+
+		try {
+			const existing_follow = await db.query.follow.findFirst({
+				where: and(eq(follow.followerId, viewer.id), eq(follow.followingId, target_user_id))
+			})
+
+			is_following = !existing_follow
+
+			if (existing_follow) {
+				await db
+					.delete(follow)
+					.where(and(eq(follow.followerId, viewer.id), eq(follow.followingId, target_user_id)))
+			} else {
+				await db
+					.insert(follow)
+					.values({ followerId: viewer.id, followingId: target_user_id })
+					.onConflictDoNothing()
+			}
+		} catch {
+			return fail(500, { message: 'Failed to update follow' })
+		}
+
+		return { success: true, target_user_id, is_following }
+	},
 	updateProfile: async ({ request, locals }) => {
 		const viewer = locals.user
 		if (!viewer) {
@@ -299,14 +422,14 @@ export const actions: Actions = {
 		}
 
 		const existing_user = await db.query.user.findFirst({
-			where: eq(user.username, next_username),
+			where: eq(userTable.username, next_username),
 			columns: { id: true }
 		})
 		if (existing_user && existing_user.id !== viewer.id) {
 			return fail(400, { message: 'Username already taken' })
 		}
 
-		const update_payload: Partial<typeof user.$inferSelect> = {
+		const update_payload: Partial<typeof userTable.$inferSelect> = {
 			name: name.trim(),
 			username: next_username,
 			displayUsername: next_username,
@@ -315,9 +438,7 @@ export const actions: Actions = {
 
 		try {
 			Object.assign(update_payload, await get_uploaded_profile_images(avatar_file, banner_file))
-
-			await db.update(user).set(update_payload).where(eq(user.id, viewer.id))
-
+			await db.update(userTable).set(update_payload).where(eq(userTable.id, viewer.id))
 			return { success: true, profile_url: `/profile/${next_username}` }
 		} catch (err) {
 			console.error('Update failed: ', err)

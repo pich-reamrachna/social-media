@@ -2,7 +2,6 @@
 	import { resolve } from '$app/paths'
 	import { enhance } from '$app/forms'
 	import { goto } from '$app/navigation'
-	import { SvelteMap } from 'svelte/reactivity'
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import RightSidebar from '$lib/components/RightSidebar.svelte'
@@ -12,13 +11,22 @@
 	import { deserialize } from '$app/forms'
 
 	import type { PageData } from './$types'
-	const { data }: { data: PageData } = $props()
-	type FeedPost = PageData['posts'][number]
-	type SearchUser = {
-		name: string
-		handle: string
-		avatar_url: string
-	}
+	import { type SideNavUser, type ProfilePost, type TrendingItem } from '$lib/types'
+	const {
+		data
+	}: {
+		data: PageData & {
+			current_user: SideNavUser
+			posts: ProfilePost[]
+			who_to_follow: SideNavUser[]
+			trending: TrendingItem[]
+		}
+	} = $props()
+
+	let current_user_override = $state<SideNavUser | undefined>()
+	const current_user = $derived(current_user_override ?? data.current_user)
+	const who_to_follow = $derived(data.who_to_follow)
+	type FeedPost = ProfilePost
 
 	let active_tab = $state<'for-you' | 'following'>('for-you')
 	const home_tabs = [
@@ -26,7 +34,9 @@
 		{ id: 'following', label: 'Following' }
 	]
 	let search_query = $state('')
+	let search_results = $state<SideNavUser[]>([])
 	let applied_keyword_search = $state('')
+	let search_timer: ReturnType<typeof setTimeout> | undefined
 	let is_settings_open = $state(false)
 	let post_draft = $state('')
 	let composer_form: HTMLFormElement | undefined = $state(undefined)
@@ -35,7 +45,6 @@
 	let selected_image_preview = $state<string | undefined>(undefined)
 	const liked_posts = $state<Record<string, boolean>>({})
 	const like_count_override = $state<Record<string, number>>({})
-	const followed_users = $state<Record<string, boolean>>({})
 
 	let is_posting = $state(false)
 	let is_error_banner_visible = $state(false)
@@ -53,6 +62,11 @@
 	const MAX_POST_LENGTH = 280
 	const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 	const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+
+	function get_safe_count(count: number | string | undefined) {
+		const parsed_count = Number(count ?? 0)
+		return Number.isFinite(parsed_count) ? Math.max(0, parsed_count) : 0
+	}
 
 	// Reactive character count
 	// eslint-disable-next-line prefer-const
@@ -77,7 +91,7 @@
 		form_data.append('postId', post_id)
 
 		try {
-			const response = await fetch('?/toggleLike', {
+			const response = await fetch('?/toggle_like', {
 				method: 'POST',
 				body: form_data
 			})
@@ -105,8 +119,46 @@
 		}
 	}
 
-	function toggle_follow(handle: string): void {
-		followed_users[handle] = !(followed_users[handle] ?? false)
+	async function toggle_follow(user_id: string) {
+		try {
+			const form_data = new FormData()
+			form_data.append('userId', user_id)
+
+			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
+			const result = deserialize(await response.text())
+
+			if (result.type !== 'success') {
+				throw new Error('Failed to update follow')
+			}
+
+			const payload = result.data as { is_following?: boolean }
+			if (typeof payload.is_following !== 'boolean') {
+				throw new Error('Failed to update follow')
+			}
+
+			if (!current_user) {
+				throw new Error('Failed to update follow')
+			}
+			const current_user_snapshot = current_user
+			current_user_override = {
+				...current_user_snapshot,
+				stats: {
+					followers: get_safe_count(current_user_snapshot.stats?.followers),
+					following: Math.max(
+						0,
+						get_safe_count(current_user_snapshot.stats?.following) + (payload.is_following ? 1 : -1)
+					)
+				}
+			}
+			show_toast('success', payload.is_following ? 'Followed!' : 'Unfollowed')
+			return true
+		} catch (error) {
+			show_toast(
+				'error',
+				error instanceof Error && error.message ? error.message : 'Failed to update follow'
+			)
+			return false
+		}
 	}
 
 	function filter_posts() {
@@ -116,41 +168,28 @@
 		return data.posts.filter((post: FeedPost) => post.content.toLowerCase().includes(q))
 	}
 
-	function get_search_users(): SearchUser[] {
-		const users = new SvelteMap<string, SearchUser>()
-
-		const add_user = (user: SearchUser) => {
-			const normalized_handle = user.handle.trim().toLowerCase()
-			if (!normalized_handle || users.has(normalized_handle)) return
-			users.set(normalized_handle, user)
+	function fetch_search_users(q: string) {
+		if (search_timer) clearTimeout(search_timer)
+		if (!q.trim()) {
+			search_results = []
+			return
 		}
-
-		add_user(data.current_user)
-
-		for (const post of data.posts) {
-			add_user(post.author)
-		}
-
-		for (const user of data.who_to_follow) {
-			add_user(user)
-		}
-
-		return [...users.values()]
+		search_timer = setTimeout(async () => {
+			const res = await fetch(`/api/search/users?q=${encodeURIComponent(q.trim())}`)
+			if (!res.ok) return
+			const payload = (await res.json()) as { users: SideNavUser[] }
+			search_results = payload.users
+		}, 300)
 	}
 
-	function get_matched_users(): SearchUser[] {
-		const q = search_query.toLowerCase().trim()
-		if (!q) return []
-
-		return get_search_users()
-			.filter(
-				(user) => user.name.toLowerCase().includes(q) || user.handle.toLowerCase().includes(q)
-			)
-			.slice(0, 6)
+	function on_search_change(value: string) {
+		search_query = value
+		fetch_search_users(value)
 	}
 
 	function open_profile(handle: string) {
 		search_query = ''
+		search_results = []
 		goto(resolve(`/profile/${handle}`))
 	}
 
@@ -160,6 +199,7 @@
 
 		applied_keyword_search = q
 		search_query = ''
+		search_results = []
 	}
 
 	function clear_keyword_search() {
@@ -281,17 +321,19 @@
 		</div>
 	{/if}
 
-	<SideNav
-		current_user={data.current_user}
-		active_route={resolve('/home')}
-		{is_settings_open}
-		on_settings_toggle={() => (is_settings_open = !is_settings_open)}
-	/>
+	{#if current_user}
+		<SideNav
+			{current_user}
+			active_route={resolve('/home')}
+			{is_settings_open}
+			on_settings_toggle={() => (is_settings_open = !is_settings_open)}
+		/>
+	{/if}
 
 	<section class="mobile-prelude" aria-label="Top feed section">
 		<div class="mobile-header">
 			<span class="mobile-logo">Y</span>
-			<img src={data.current_user.avatar_url} alt={data.current_user.name} class="mobile-avatar" />
+			<img src={current_user?.avatar_url} alt={current_user?.name ?? ''} class="mobile-avatar" />
 		</div>
 	</section>
 
@@ -311,8 +353,8 @@
 				extra_class="feed-search-main"
 				aria_label="Search posts"
 				{search_query}
-				search_users={get_matched_users()}
-				on_search_change={(value: string) => (search_query = value)}
+				search_users={search_results}
+				{on_search_change}
 				on_open_profile={open_profile}
 				on_apply_keyword_search={apply_keyword_search}
 			/>
@@ -337,39 +379,34 @@
 			class="composer"
 			method="POST"
 			enctype="multipart/form-data"
-			action="?/createPost"
-			use:enhance={({ formElement }) => {
+			action="?/create_post"
+			use:enhance={() => {
 				is_posting = true
 				show_toast('loading', 'Posting...')
 				return async ({ result, update }) => {
 					is_posting = false
+					await update()
+
 					if (result.type === 'success') {
 						post_draft = ''
-						clear_selected_image(formElement)
+						clear_selected_image(composer_form ?? undefined)
 						show_toast('success', 'Post created!')
 					} else {
-						const failure_message =
+						const failure_msg =
 							result.type === 'failure' &&
 							result.data &&
 							typeof result.data === 'object' &&
 							'message' in result.data &&
 							typeof result.data.message === 'string'
 								? result.data.message
-								: result.type === 'error'
-									? 'An unexpected error occurred'
-									: 'Failed to post'
+								: 'Failed to post'
 
-						show_toast('error', failure_message || 'Failed to post')
+						show_toast('error', failure_msg)
 					}
-					await update()
 				}
 			}}
 		>
-			<img
-				src={data.current_user.avatar_url}
-				alt={data.current_user.name}
-				class="composer-avatar"
-			/>
+			<img src={current_user?.avatar_url} alt={current_user?.name ?? ''} class="composer-avatar" />
 			<div class="composer-body">
 				<textarea
 					name="content"
@@ -475,11 +512,10 @@
 
 	<RightSidebar
 		trending={data.trending}
-		who_to_follow={data.who_to_follow}
+		{who_to_follow}
 		{search_query}
-		search_users={get_matched_users()}
-		{followed_users}
-		on_search_change={(value: string) => (search_query = value)}
+		search_users={search_results}
+		{on_search_change}
 		on_open_profile={open_profile}
 		on_apply_keyword_search={apply_keyword_search}
 		on_toggle_follow={toggle_follow}

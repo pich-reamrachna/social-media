@@ -203,6 +203,19 @@
 	color: #6b7280;
 }
 
+.side-nav-user-stats {
+	display: flex;
+	gap: 0.75rem;
+	margin-top: 0.25rem;
+	font-size: 0.75rem;
+	color: #9ca3af;
+}
+
+.side-nav-user-stats strong {
+	color: #f3f4f6;
+	margin-right: 0.15rem;
+}
+
 @media (max-width: 1280px) {
 	.side-nav {
 		padding: 1.5rem 0.5rem;

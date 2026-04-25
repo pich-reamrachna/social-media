@@ -1,12 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
+	import type { SideNavUser } from '$lib/types'
 	import './SideNav.css'
-
-	type User = {
-		name: string
-		handle: string
-		avatar_url: string
-	}
 
 	type NavItem = {
 		label: string
@@ -15,7 +10,7 @@
 	}
 
 	const { current_user, active_route, is_settings_open, on_settings_toggle } = $props<{
-		current_user: User
+		current_user: SideNavUser
 		active_route: string
 		is_settings_open?: boolean
 		on_settings_toggle?: () => void
@@ -130,7 +125,11 @@
 				<img src={current_user.avatar_url} alt={current_user.name} class="side-nav-user-avatar" />
 				<div class="side-nav-user-info">
 					<div class="side-nav-user-name">{current_user.name}</div>
-					<div class="side-nav-user-handle">@{current_user.handle}</div>
+					<div class="side-nav-user-handle">@{current_user.handle || 'user'}</div>
+					<div class="side-nav-user-stats">
+						<span><strong>{current_user.stats?.following ?? 0}</strong> Following</span>
+						<span><strong>{current_user.stats?.followers ?? 0}</strong> Followers</span>
+					</div>
 				</div>
 			</a>
 		{/if}

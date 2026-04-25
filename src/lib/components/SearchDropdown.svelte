@@ -1,11 +1,7 @@
 <script lang="ts">
 	import './SearchDropdown.css'
 
-	type SearchUser = {
-		name: string
-		handle: string
-		avatar_url: string
-	}
+	import { type FollowUser as SearchUser } from '$lib/types'
 
 	const {
 		search_query = '',

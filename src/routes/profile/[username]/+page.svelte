@@ -1,17 +1,39 @@
 <script lang="ts">
 	import { deserialize } from '$app/forms'
+	import { goto } from '$app/navigation'
 	import { resolve } from '$app/paths'
-
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
+	import RightSidebar from '$lib/components/RightSidebar.svelte'
 	import EditProfileForm from '$lib/components/EditProfileForm.svelte'
 	import '../../home/home.css'
-	import '$lib/components/RightSidebar.css'
 
 	import type { PageData } from './$types'
-	const { data }: { data: PageData } = $props()
-	type ProfilePost = (typeof data.posts)[number]
+	import {
+		type SideNavUser,
+		type ProfileData,
+		type ProfilePost,
+		type TrendingItem
+	} from '$lib/types'
 
+	const {
+		data
+	}: {
+		data: PageData & {
+			current_user: SideNavUser | undefined
+			profile: ProfileData
+			posts: ProfilePost[]
+			is_owner: boolean
+			is_following: boolean
+			who_to_follow: SideNavUser[]
+			trending: TrendingItem[]
+		}
+	} = $props()
+
+	let current_user_override = $state<SideNavUser | undefined>()
+	let who_to_follow_override = $state<SideNavUser[] | undefined>()
+	const current_user = $derived(current_user_override ?? data.current_user)
+	const who_to_follow = $derived(who_to_follow_override ?? data.who_to_follow)
 	let active_tab = $state<'Posts' | 'media' | 'liked posts'>('Posts')
 	let is_settings_open = $state(false)
 	let profile_posts = $state<ProfilePost[]>([])
@@ -20,11 +42,19 @@
 	let has_loaded_liked_posts = $state(false)
 	let liked_posts = $state<Record<string, boolean>>({})
 	let like_count_override = $state<Record<string, number>>({})
-
-	const followed_users = $state<Record<string, boolean>>({})
-
-	// Modal States
+	let is_profile_following = $state(false)
+	let profile_followers = $state(0)
+	let is_follow_pending = $state(false)
 	let is_edit_modal_open = $state(false)
+	let toast = $state<{
+		type: 'success' | 'error'
+		message: string
+		visible: boolean
+	}>({
+		type: 'success',
+		message: '',
+		visible: false
+	})
 
 	$effect(() => {
 		profile_posts = [...data.posts]
@@ -33,45 +63,51 @@
 		is_liked_posts_loading = false
 		liked_posts = {}
 		like_count_override = {}
+		is_profile_following = data.is_following
+		profile_followers = get_safe_count(data.profile.stats.followers)
 	})
 
-	function format_join_date(dateString: Date | string) {
-		if (!dateString) return 'Unknown Date'
-		const date = new Date(dateString)
+	function get_safe_count(count: number) {
+		const parsed_count = Number(count)
+		return Number.isFinite(parsed_count) ? Math.max(0, parsed_count) : 0
+	}
+
+	function format_join_date(date_string: Date | string) {
+		if (!date_string) return 'Unknown Date'
+		const date = new Date(date_string)
 		return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 	}
 
+	function format_stat_count(count: number) {
+		return Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(
+			get_safe_count(count)
+		)
+	}
+
+	function get_stat_label(count: number, singular: string, plural: string) {
+		return get_safe_count(count) === 1 ? singular : plural
+	}
+
 	const displayed_posts = $derived.by(() => {
-		if (active_tab === 'liked posts') {
-			return profile_liked_posts
-		}
-		if (active_tab === 'media') {
-			return profile_posts.filter((p) => p.images && p.images.length > 0)
-		}
+		if (active_tab === 'liked posts') return profile_liked_posts
+		if (active_tab === 'media') return profile_posts.filter((p) => p.images && p.images.length > 0)
 		return profile_posts
 	})
 
 	async function ensure_liked_posts_loaded() {
 		if (has_loaded_liked_posts || is_liked_posts_loading) return
-
 		is_liked_posts_loading = true
-
 		try {
-			const form_data = new FormData()
-			const response = await fetch('?/loadLikedPosts', {
+			const response = await fetch('?/load_liked_posts_action', {
 				method: 'POST',
-				body: form_data
+				body: new FormData()
 			})
 			const result = deserialize(await response.text())
-			if (result.type === 'failure' || result.type === 'error') {
-				throw new Error()
-			}
-
+			if (result.type === 'failure' || result.type === 'error') throw new Error()
 			const payload =
 				result.type === 'success'
 					? (result.data as { liked_posts?: ProfilePost[] } | undefined)
 					: undefined
-
 			profile_liked_posts = payload?.liked_posts ?? []
 			has_loaded_liked_posts = true
 		} catch {
@@ -83,33 +119,24 @@
 
 	function select_tab(tab: 'Posts' | 'media' | 'liked posts') {
 		active_tab = tab
-		if (tab === 'liked posts') {
-			void ensure_liked_posts_loaded()
-		}
+		if (tab === 'liked posts') void ensure_liked_posts_loaded()
 	}
 
 	function update_local_post_state(post_id: string, is_next_liked: boolean, next_likes: number) {
 		const update_post = (p: ProfilePost) => {
 			if (p.id !== post_id) return p
-			return {
-				...p,
-				is_liked_by_user: is_next_liked,
-				stats: { ...p.stats, likes: next_likes }
-			}
+			return { ...p, is_liked_by_user: is_next_liked, stats: { ...p.stats, likes: next_likes } }
 		}
-
 		profile_posts = profile_posts.map(update_post)
 		profile_liked_posts = profile_liked_posts.map(update_post)
 	}
 
 	function sync_owner_liked_posts(post: ProfilePost, post_id: string, is_liked: boolean) {
 		if (!data.is_owner) return
-
 		if (!is_liked) {
 			profile_liked_posts = profile_liked_posts.filter((p) => p.id !== post_id)
 			return
 		}
-
 		if (profile_liked_posts.some((p) => p.id === post_id)) return
 		profile_liked_posts = [post, ...profile_liked_posts]
 	}
@@ -129,41 +156,137 @@
 		like_count_override[post_id] = next_likes
 		update_local_post_state(post_id, is_next_liked, next_likes)
 
-		const optimistic_owner_post: ProfilePost = {
+		const optimistic_post: ProfilePost = {
 			...post,
 			is_liked_by_user: is_next_liked,
 			stats: { ...post.stats, likes: next_likes }
 		}
-		sync_owner_liked_posts(optimistic_owner_post, post_id, is_next_liked)
+		sync_owner_liked_posts(optimistic_post, post_id, is_next_liked)
 
 		const form_data = new FormData()
 		form_data.append('postId', post_id)
-
 		try {
-			const response = await fetch('?/toggleLike', {
-				method: 'POST',
-				body: form_data
-			})
+			const response = await fetch('?/toggle_like', { method: 'POST', body: form_data })
 			const result = deserialize(await response.text())
 			if (result.type === 'failure' || result.type === 'error') throw new Error()
 		} catch {
 			liked_posts[post_id] = is_liked
 			like_count_override[post_id] = likes
 			update_local_post_state(post_id, is_liked, likes)
-
 			sync_owner_liked_posts(post, post_id, is_liked)
 		}
 	}
 
-	function toggle_follow(handle: string): void {
-		followed_users[handle] = !(followed_users[handle] ?? false)
+	function update_current_user_following(delta: number) {
+		if (!current_user) return
+		current_user_override = {
+			...current_user,
+			stats: {
+				followers: current_user.stats?.followers ?? 0,
+				following: Math.max(0, (current_user.stats?.following ?? 0) + delta)
+			}
+		}
+	}
+
+	function sync_viewed_profile_follow_state(user_id: string, is_following: boolean) {
+		if (user_id !== data.profile.id) return
+
+		const follower_delta = is_following === is_profile_following ? 0 : is_following ? 1 : -1
+		is_profile_following = is_following
+		profile_followers = get_safe_count(profile_followers + follower_delta)
+	}
+
+	function show_toast(type: 'success' | 'error', message: string, duration = 3000) {
+		toast = { type, message, visible: true }
+		setTimeout(() => {
+			toast.visible = false
+		}, duration)
+	}
+
+	async function toggle_profile_follow() {
+		if (is_follow_pending) return
+		const did_follow = is_profile_following
+		is_follow_pending = true
+
+		const form_data = new FormData()
+		form_data.append('userId', data.profile.id)
+		try {
+			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
+			const result = deserialize(await response.text())
+
+			if (result.type !== 'success') throw new Error()
+			const payload = result.data as { is_following?: boolean }
+			const is_following_payload = payload.is_following
+
+			if (typeof is_following_payload !== 'boolean') throw new Error()
+			is_profile_following = !!is_following_payload
+			profile_followers = get_safe_count(profile_followers + (is_following_payload ? 1 : -1))
+			update_current_user_following(is_following_payload ? 1 : -1)
+
+			if (is_following_payload) {
+				who_to_follow_override = who_to_follow.filter((user) => user.id !== data.profile.id)
+			}
+			show_toast('success', is_following_payload ? 'Followed!' : 'Unfollowed')
+		} catch {
+			// keep the previous follow state on failure
+			is_profile_following = did_follow
+			show_toast('error', 'Failed to update follow')
+		} finally {
+			is_follow_pending = false
+		}
+	}
+
+	async function sidebar_toggle_follow(user_id: string) {
+		try {
+			const form_data = new FormData()
+			form_data.append('userId', user_id)
+			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
+			const result = deserialize(await response.text())
+
+			if (result.type !== 'success') {
+				throw new Error('Failed to update follow')
+			}
+			const payload = result.data as { is_following?: boolean }
+
+			if (typeof payload.is_following !== 'boolean') {
+				throw new Error('Failed to update follow')
+			}
+
+			const is_following_payload = payload.is_following
+			update_current_user_following(is_following_payload ? 1 : -1)
+			sync_viewed_profile_follow_state(user_id, is_following_payload)
+			show_toast('success', is_following_payload ? 'Followed!' : 'Unfollowed')
+			return true
+		} catch (error) {
+			show_toast(
+				'error',
+				error instanceof Error && error.message ? error.message : 'Failed to update follow'
+			)
+			return false
+		}
+	}
+
+	function open_profile(handle: string) {
+		void goto(resolve(`/profile/${handle}`))
 	}
 </script>
 
 <div class="home-shell">
-	{#if data.current_user}
+	{#if toast.visible}
+		<div
+			class="toast"
+			class:toast-success={toast.type === 'success'}
+			class:toast-error={toast.type === 'error'}
+			role="status"
+			aria-live="polite"
+		>
+			<span class="toast-message">{toast.message}</span>
+		</div>
+	{/if}
+
+	{#if current_user}
 		<SideNav
-			current_user={data.current_user}
+			{current_user}
 			active_route={resolve(`/profile/${data.profile.handle}`)}
 			{is_settings_open}
 			on_settings_toggle={() => (is_settings_open = !is_settings_open)}
@@ -203,16 +326,28 @@
 			<div class="mt-3">
 				{#if data.is_owner}
 					<button
-						onclick={() => (is_edit_modal_open = true)}
 						class="cursor-pointer rounded-full border border-[#f3f4f6] bg-[#f3f4f6] px-4 py-1.5 text-sm font-bold text-[#0d0d0d] transition-colors hover:bg-white/90"
+						onclick={() => (is_edit_modal_open = true)}
 					>
 						Edit Profile
 					</button>
 				{:else}
 					<button
-						class="cursor-pointer rounded-full border border-[#f3f4f6] bg-[#f3f4f6] px-4 py-1.5 text-sm font-bold text-[#0d0d0d] transition-colors hover:bg-white/90"
+						class="follow-btn"
+						class:follow-btn-active={is_profile_following}
+						class:follow-btn-pending={is_follow_pending}
+						disabled={is_follow_pending}
+						aria-busy={is_follow_pending}
+						onclick={toggle_profile_follow}
 					>
-						Follow
+						{#if is_follow_pending}
+							{is_profile_following ? 'Unfollowing...' : 'Following...'}
+						{:else if is_profile_following}
+							<span class="follow-text">Following</span>
+							<span class="unfollow-text">Unfollow</span>
+						{:else}
+							<span>Follow</span>
+						{/if}
 					</button>
 				{/if}
 			</div>
@@ -222,7 +357,9 @@
 			<h1 class="m-0 text-2xl leading-tight font-extrabold">{data.profile.name}</h1>
 			<span class="text-[0.95rem] text-[#6b7280]">@{data.profile.handle}</span>
 
-			<p class="my-3 text-[0.9375rem] leading-[1.6] break-words whitespace-pre-wrap text-[#e5e7eb]">
+			<p
+				class="my-3 text-[0.9375rem] leading-[1.6] wrap-break-word whitespace-pre-wrap text-[#e5e7eb]"
+			>
 				{data.profile.bio}
 			</p>
 
@@ -231,6 +368,21 @@
 				<span class="flex items-center gap-1"
 					>📅 Joined {format_join_date(data.profile.joined_date)}</span
 				>
+			</div>
+
+			<div class="flex flex-wrap gap-x-4 gap-y-1 text-[0.9rem] text-[#e5e7eb]">
+				<span class="whitespace-nowrap">
+					<strong class="font-bold text-[#f3f4f6] tabular-nums">
+						{format_stat_count(data.profile.stats.following)}
+					</strong>
+					{get_stat_label(data.profile.stats.following, 'Following', 'Following')}
+				</span>
+				<span class="whitespace-nowrap">
+					<strong class="font-bold text-[#f3f4f6] tabular-nums">
+						{format_stat_count(profile_followers)}
+					</strong>
+					{get_stat_label(profile_followers, 'Follower', 'Followers')}
+				</span>
 			</div>
 		</div>
 
@@ -280,53 +432,12 @@
 		</div>
 	</main>
 
-	<aside class="right-sidebar">
-		{#if data.trending && data.trending.length > 0}
-			<div class="sidebar-card">
-				<h3 class="sidebar-card-title">Trending Now</h3>
-				<ul class="trending-list">
-					{#each data.trending as trend (trend.tag)}
-						<li class="trending-item">
-							<span class="trending-category">{trend.category}</span>
-							<span class="trending-tag">{trend.tag}</span>
-							<span class="trending-count">{trend.count} Echoes</span>
-						</li>
-					{/each}
-				</ul>
-				<button class="show-more-btn">Show more</button>
-			</div>
-		{/if}
-
-		{#if data.who_to_follow && data.who_to_follow.length > 0}
-			<div class="sidebar-card">
-				<h3 class="sidebar-card-title">Who to Follow</h3>
-				<ul class="follow-list">
-					{#each data.who_to_follow as user (user.handle)}
-						{@const is_following = followed_users[user.handle] ?? false}
-						<li class="follow-item">
-							<img src={user.avatar_url} alt={user.name} class="follow-avatar" />
-							<div class="follow-info">
-								<span class="follow-name">{user.name}</span>
-								<span class="follow-handle">@{user.handle}</span>
-							</div>
-							<button
-								class="follow-btn"
-								class:follow-btn-active={is_following}
-								onclick={() => toggle_follow(user.handle)}
-							>
-								{is_following ? 'Following' : 'Follow'}
-							</button>
-						</li>
-					{/each}
-				</ul>
-				<button class="show-more-btn">Show more</button>
-			</div>
-		{/if}
-
-		<footer class="sidebar-footer">
-			<span>© 2026 Y.</span>
-		</footer>
-	</aside>
+	<RightSidebar
+		trending={data.trending}
+		{who_to_follow}
+		on_open_profile={open_profile}
+		on_toggle_follow={sidebar_toggle_follow}
+	/>
 
 	{#if is_edit_modal_open && data.is_owner}
 		<div
