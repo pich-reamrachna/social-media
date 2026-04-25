@@ -25,7 +25,7 @@
 		{
 			label: 'Profile',
 			path: `/profile/${current_user?.handle || ''}`,
-			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
+			icon: 'M5.121 17.804A9 9 0 0112 15a9 9 0 016.879 2.804M15 11a3 3 0 11-6 0 3 3 0 016 0z'
 		}
 	])
 

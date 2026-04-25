@@ -444,7 +444,7 @@
 			{/each}
 		</nav>
 
-		<div class="pb-12">
+		<div>
 			{#if active_tab === 'liked posts' && is_liked_posts_loading}
 				{#each [0, 1, 2] as i (i)}
 					<div class="skeleton-post">
