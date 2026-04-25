@@ -41,6 +41,13 @@
 
 	const followed_users = $state<Record<string, boolean>>({})
 
+	// Modal States
+	let is_edit_modal_open = $state(false)
+	let is_saving_profile = $state(false)
+	let form_error = $state('')
+	let avatar_preview = $state('')
+	let banner_preview = $state('')
+
 	$effect(() => {
 		profile_posts = [...data.posts]
 		profile_liked_posts = []
@@ -57,7 +64,18 @@
 		return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 	}
 
-	// THIS IS THE FIX: Move the filter logic out of the HTML and into a $derived rune
+	function handle_file_preview(event: Event, type: 'avatar' | 'banner') {
+		const input = event.target as HTMLInputElement
+		if (!input.files || input.files.length === 0) return
+
+		const file = input.files[0]
+		if (!file) return
+
+		const url = URL.createObjectURL(file)
+		if (type === 'avatar') avatar_preview = url
+		if (type === 'banner') banner_preview = url
+	}
+
 	const displayed_posts = $derived.by(() => {
 		if (active_tab === 'liked posts') {
 			return profile_liked_posts
@@ -146,7 +164,6 @@
 		like_count_override[post_id] = next_likes
 		update_local_post_state(post_id, is_next_liked, next_likes)
 
-		// On your own profile, keep "liked posts" tab in sync instantly.
 		const optimistic_owner_post: ProfilePost = {
 			...post,
 			is_liked_by_user: is_next_liked,
@@ -239,9 +256,10 @@
 				src={data.profile.avatar_url}
 				alt={data.profile.name}
 				class="z-10 -mt-15 h-30 w-30 rounded-full border-4 border-[#0d0d0d] bg-[#1f1f1f] object-cover"
-				onerror={(e) =>
-					((e.currentTarget as HTMLImageElement).src =
-						`https://i.pravatar.cc/150?u=${data.profile.id}`)}
+				onerror={(e) => {
+					;(e.currentTarget as HTMLImageElement).src =
+						`https://i.pravatar.cc/150?u=${data.profile.id}`
+				}}
 			/>
 
 			<div class="mt-3">
@@ -289,7 +307,7 @@
 		<nav class="mt-2 flex justify-around border-b border-[#1f1f1f]">
 			{#each ['Posts', 'media', 'liked posts'] as tab (tab)}
 				<button
-					class="relative flex-1 py-4 text-[0.8rem] font-semibold tracking-[0.08em] uppercase transition-colors hover:bg-white/5
+					class="relative flex-1 cursor-pointer py-4 text-[0.8rem] font-semibold tracking-[0.08em] uppercase transition-colors hover:bg-white/5
                            {active_tab === tab ? 'text-[#f3f4f6]' : 'text-[#6b7280]'}"
 					onclick={() => select_tab(tab as 'Posts' | 'media' | 'liked posts')}
 				>

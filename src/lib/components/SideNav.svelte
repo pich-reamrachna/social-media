@@ -23,21 +23,6 @@
 			icon: 'M3 12l9-8 9 8v8a2 2 0 01-2 2h-4v-6H9v6H5a2 2 0 01-2-2z'
 		},
 		{
-			label: 'Explore',
-			path: '/explore',
-			icon: 'M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z'
-		},
-		{
-			label: 'Notifications',
-			path: '/notifications',
-			icon: 'M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0h6z'
-		},
-		{
-			label: 'Messages',
-			path: '/messages',
-			icon: 'M8 10h8M8 14h5m-9 6h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z'
-		},
-		{
 			label: 'Profile',
 			path: `/profile/${current_user?.handle || ''}`,
 			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
@@ -49,20 +34,10 @@
 			label: 'Home',
 			path: '/home',
 			icon: 'M3 12l9-8 9 8v8a2 2 0 01-2 2h-4v-6H9v6H5a2 2 0 01-2-2z'
-		},
-		{
-			label: 'Explore',
-			path: '/explore',
-			icon: 'M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z'
 		}
 	]
 
 	const mobile_nav_end = $derived.by<NavItem[]>(() => [
-		{
-			label: 'Notifications',
-			path: '/notifications',
-			icon: 'M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0h6z'
-		},
 		{
 			label: 'Profile',
 			path: `/profile/${current_user?.handle || ''}`,

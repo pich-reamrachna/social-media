@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit'
 import type { LayoutServerLoad } from './$types'
 
 const AUTH_ROUTES = new Set(['/login', '/register'])
-const PROTECTED_ROUTE_PREFIXES = ['/home', '/explore', '/notifications', '/messages', '/profile']
+const PROTECTED_ROUTE_PREFIXES = ['/home', '/profile']
 
 const is_protected_route = (pathname: string) =>
 	PROTECTED_ROUTE_PREFIXES.some(

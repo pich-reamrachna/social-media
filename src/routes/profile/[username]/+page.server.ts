@@ -12,12 +12,14 @@ import { dev } from '$app/environment'
 import { PROFILE_POSTS_LIMIT } from '$lib/constants/post'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { upload_cloudinary } from '$lib/server/cloudinary'
 import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_LIKED_POSTS_LIMIT = 20
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
 const TOGGLE_FOLLOW_LIMIT = { limit: 15, windowMs: 60_000 }
 
+// --- PROFILE LOADING LOGIC ---
 const log_dev_duration = (label: string, started_at: number) => {
 	if (dev) {
 		console.info(`${label} ${Math.round(performance.now() - started_at)}ms`)
@@ -52,9 +54,7 @@ const load_profile_posts = async (user_id: string) => {
 	const started_at = dev ? performance.now() : 0
 	const profile_posts = await db.query.post.findMany({
 		where: eq(post.userId, user_id),
-		with: {
-			author: true
-		},
+		with: { author: true },
 		orderBy: [desc(post.createdAt)],
 		limit: PROFILE_POSTS_LIMIT
 	})
@@ -66,13 +66,7 @@ const load_liked_posts = async (user_id: string) => {
 	const started_at = dev ? performance.now() : 0
 	const user_likes = await db.query.like.findMany({
 		where: eq(like.userId, user_id),
-		with: {
-			post: {
-				with: {
-					author: true
-				}
-			}
-		},
+		with: { post: { with: { author: true } } },
 		orderBy: [desc(like.createdAt)],
 		limit: PROFILE_LIKED_POSTS_LIMIT
 	})
@@ -85,9 +79,7 @@ const load_viewer_likes = async (post_ids: string[], viewer_id?: string) => {
 	const viewer_likes =
 		post_ids.length && viewer_id
 			? await db
-					.select({
-						post_id: like.postId
-					})
+					.select({ post_id: like.postId })
 					.from(like)
 					.where(and(eq(like.userId, viewer_id), inArray(like.postId, post_ids)))
 			: []
@@ -290,9 +282,7 @@ export const actions: Actions = {
 			})
 			const current_post = await db.query.post.findFirst({
 				where: eq(post.id, post_id),
-				columns: {
-					likeCount: true
-				}
+				columns: { likeCount: true }
 			})
 			if (!current_post) {
 				return fail(404, { message: 'Post not found' })
@@ -302,17 +292,13 @@ export const actions: Actions = {
 				await db.delete(like).where(and(eq(like.postId, post_id), eq(like.userId, viewer.id)))
 				await db
 					.update(post)
-					.set({
-						likeCount: sql`greatest(${post.likeCount} - 1, 0)`
-					})
+					.set({ likeCount: sql`greatest(${post.likeCount} - 1, 0)` })
 					.where(eq(post.id, post_id))
 			} else {
 				await db.insert(like).values({ userId: viewer.id, postId: post_id })
 				await db
 					.update(post)
-					.set({
-						likeCount: sql`${post.likeCount} + 1`
-					})
+					.set({ likeCount: sql`${post.likeCount} + 1` })
 					.where(eq(post.id, post_id))
 			}
 		} catch {
