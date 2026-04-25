@@ -11,7 +11,7 @@
 	const { form, data } = $props<{ form: ActionData; data: PageData }>()
 
 	$effect(() => {
-		identifier = form?.identifier ?? ''
+		identifier = form?.identifier ?? data.prefill_identifier ?? ''
 		should_remember_me = form?.should_remember_me ?? false
 	})
 

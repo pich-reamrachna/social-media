@@ -73,10 +73,19 @@ const get_blocked_login_rate_limit_failure = async (
 }
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (locals.user) throw redirect(302, '/home')
+	const prefill_identifier = url.searchParams.get('identifier') ?? ''
+
+	if (locals.user) {
+		const is_different_account =
+			prefill_identifier &&
+			locals.user.email !== prefill_identifier &&
+			locals.user.username !== prefill_identifier
+		if (!is_different_account) throw redirect(302, '/home')
+	}
 
 	return {
-		verification_sent: url.searchParams.get('verification') === 'sent'
+		verification_sent: url.searchParams.get('verification') === 'sent',
+		prefill_identifier
 	}
 }
 

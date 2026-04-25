@@ -138,7 +138,7 @@ export const actions: Actions = {
 			if (rate_limit_failure) return rate_limit_failure
 
 			if (error.message.toLowerCase().includes('email')) {
-				const login_url = `${env.ORIGIN}/login`
+				const login_url = `${env.ORIGIN}/login?identifier=${encodeURIComponent(email)}`
 				send_email({
 					to: email,
 					subject: 'Your Y account already exists',
