@@ -21,7 +21,8 @@
 		eyebrow = '',
 		title = 'Edit Profile',
 		can_close = false,
-		on_close
+		on_close,
+		on_profile_update_start
 	} = $props<{
 		profile: ProfileFormProfile
 		action?: string
@@ -31,6 +32,7 @@
 		title?: string
 		can_close?: boolean
 		on_close?: () => void
+		on_profile_update_start?: (changes: { avatar: boolean; banner: boolean; text: boolean }) => void
 	}>()
 
 	let name = $state('')
@@ -137,7 +139,16 @@
 			}
 			if (result.type === 'success') {
 				const payload = result.data as { profile_url?: string } | undefined
+				const changes = {
+					avatar: !!avatar_preview,
+					banner: !!banner_preview,
+					text:
+						name.trim() !== profile.name.trim() ||
+						bio.trim() !== profile.bio.trim() ||
+						username.trim().toLowerCase() !== profile.username.trim().toLowerCase()
+				}
 				reset_previews()
+				on_profile_update_start?.(changes)
 				on_close?.()
 				if (payload?.profile_url) {
 					// eslint-disable-next-line svelte/no-navigation-without-resolve
