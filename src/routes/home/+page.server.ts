@@ -459,10 +459,13 @@ export const actions: Actions = {
 					.delete(follow)
 					.where(and(eq(follow.followerId, user_locals.id), eq(follow.followingId, target_user_id)))
 			} else {
-				await db.insert(follow).values({
-					followerId: user_locals.id,
-					followingId: target_user_id
-				})
+				await db
+					.insert(follow)
+					.values({
+						followerId: user_locals.id,
+						followingId: target_user_id
+					})
+					.onConflictDoNothing()
 			}
 		} catch (error) {
 			console.error('toggleFollow database error:', error)
