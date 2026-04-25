@@ -12,7 +12,6 @@ import { dev } from '$app/environment'
 import { PROFILE_POSTS_LIMIT } from '$lib/constants/post'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
-import { upload_cloudinary } from '$lib/server/cloudinary'
 import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_LIKED_POSTS_LIMIT = 20

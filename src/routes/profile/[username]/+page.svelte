@@ -41,13 +41,6 @@
 
 	const followed_users = $state<Record<string, boolean>>({})
 
-	// Modal States
-	let is_edit_modal_open = $state(false)
-	let is_saving_profile = $state(false)
-	let form_error = $state('')
-	let avatar_preview = $state('')
-	let banner_preview = $state('')
-
 	$effect(() => {
 		profile_posts = [...data.posts]
 		profile_liked_posts = []
@@ -62,18 +55,6 @@
 		if (!date_string) return 'Unknown Date'
 		const date = new Date(date_string)
 		return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-	}
-
-	function handle_file_preview(event: Event, type: 'avatar' | 'banner') {
-		const input = event.target as HTMLInputElement
-		if (!input.files || input.files.length === 0) return
-
-		const file = input.files[0]
-		if (!file) return
-
-		const url = URL.createObjectURL(file)
-		if (type === 'avatar') avatar_preview = url
-		if (type === 'banner') banner_preview = url
 	}
 
 	const displayed_posts = $derived.by(() => {
