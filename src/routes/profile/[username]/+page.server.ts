@@ -130,7 +130,7 @@ const map_post_for_frontend = (
 		id: post_row.author.id,
 		name: post_row.author.name,
 		handle: post_row.author.username || 'user',
-		avatar_url: post_row.author.image || `https://i.pravatar.cc/150?u=${post_row.author.id}`
+		avatar_url: post_row.author.image || '/profile.png'
 	},
 	content: post_row.content,
 	images: post_row.imageUrl ? [post_row.imageUrl] : [],
@@ -157,7 +157,7 @@ const map_current_user = (
 		id: viewer.id,
 		name: viewer.name,
 		handle: viewer.username || viewer.email?.split('@')[0] || 'user',
-		avatar_url: viewer.image || `https://i.pravatar.cc/150?u=${viewer.id}`,
+		avatar_url: viewer.image || '/profile.png',
 		stats
 	}
 }
@@ -191,7 +191,7 @@ const load_who_to_follow = async (viewer_id: string | undefined, profile_id: str
 			id: suggested_user.id,
 			name: suggested_user.name,
 			handle: suggested_user.username!,
-			avatar_url: suggested_user.image || `https://i.pravatar.cc/150?u=${suggested_user.id}`,
+			avatar_url: suggested_user.image || '/profile.png',
 			is_following: false
 		})
 	)
@@ -217,7 +217,7 @@ const map_profile_data = (
 	banner_url:
 		user.banner ||
 		'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop',
-	avatar_url: user.image || `https://i.pravatar.cc/150?u=${user.id}`,
+	avatar_url: user.image || '/profile.png',
 	joined_date: user.createdAt,
 	stats
 })

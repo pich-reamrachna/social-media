@@ -19,7 +19,6 @@ const config = {
 					'data:',
 					'blob:',
 					'https://res.cloudinary.com',
-					'https://i.pravatar.cc',
 					'https://images.unsplash.com'
 				],
 				'font-src': ['self', 'data:'],

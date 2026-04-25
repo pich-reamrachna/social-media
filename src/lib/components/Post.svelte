@@ -50,7 +50,7 @@
 			aria-label={`Open ${name}'s profile`}
 		>
 			<img
-				src={avatar_url || `https://i.pravatar.cc/150?u=${handle}`}
+				src={avatar_url || '/profile.png'}
 				alt={name}
 				class="h-10 w-10 rounded-full bg-[#1f1f1f] object-cover"
 				loading="lazy"

@@ -189,7 +189,7 @@ const map_home_post = (
 		id: p.author.id,
 		name: p.author.name,
 		handle: p.author.username ?? p.author.email?.split('@')[0] ?? 'user',
-		avatar_url: p.author.image || `https://i.pravatar.cc/150?u=${p.author.id}`
+		avatar_url: p.author.image || '/profile.png'
 	},
 	content: p.content,
 	images: p.imageUrl ? [p.imageUrl] : [],
@@ -238,7 +238,7 @@ const load_suggested_users = async (user_id: string) => {
 			id: suggested_user.id,
 			name: suggested_user.name,
 			handle: suggested_user.username!,
-			avatar_url: suggested_user.image || `https://i.pravatar.cc/150?u=${suggested_user.id}`,
+			avatar_url: suggested_user.image || '/profile.png',
 			is_following: false
 		})
 	)
@@ -272,7 +272,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		id: user_local.id,
 		name: user_local.name,
 		handle: user_local.username || user_local.email?.split('@')[0] || 'user',
-		avatar_url: user_local.image || `https://i.pravatar.cc/150?u=${user_local.id}`,
+		avatar_url: user_local.image || '/profile.png',
 		stats
 	} as SideNavUser
 
