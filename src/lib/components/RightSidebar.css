@@ -95,6 +95,27 @@
 	display: flex;
 	align-items: center;
 	gap: 0.75rem;
+	justify-content: space-between;
+}
+
+.follow-profile-link {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex: 1;
+	min-width: 0;
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0;
+	text-align: left;
+	cursor: pointer;
+	border-radius: 9999px;
+	transition: opacity 0.15s;
+}
+
+.follow-profile-link:hover {
+	opacity: 0.8;
 }
 
 .follow-avatar {
@@ -130,6 +151,7 @@
 .follow-btn {
 	flex-shrink: 0;
 	padding: 0.35rem 0.875rem;
+	min-width: 5.5rem;
 	border-radius: 9999px;
 	border: 1px solid #f3f4f6;
 	background: none;
@@ -142,6 +164,9 @@
 		background-color 0.15s,
 		color 0.15s,
 		border-color 0.15s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .follow-btn:hover {
@@ -151,13 +176,25 @@
 
 .follow-btn-active {
 	border-color: #374151;
-	color: #9ca3af;
+	color: #f3f4f6;
 }
 
 .follow-btn-active:hover {
-	background: none;
+	background: rgba(244, 63, 94, 0.1);
 	border-color: #f43f5e;
 	color: #f43f5e;
+}
+
+.unfollow-text {
+	display: none;
+}
+
+.follow-btn-active:hover .follow-text {
+	display: none;
+}
+
+.follow-btn-active:hover .unfollow-text {
+	display: inline;
 }
 
 .show-more-btn {

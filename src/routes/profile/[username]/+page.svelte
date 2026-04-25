@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { deserialize } from '$app/forms'
-	import { invalidateAll } from '$app/navigation'
+	import { invalidateAll, goto } from '$app/navigation'
 	import { resolve } from '$app/paths'
 
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
+	import RightSidebar from '$lib/components/RightSidebar.svelte'
 	import '../../home/home.css'
-	import '$lib/components/RightSidebar.css'
 
 	import type { PageData } from './$types'
 	import {
@@ -31,6 +31,7 @@
 
 	let active_tab = $state<'Posts' | 'media' | 'liked posts'>('Posts')
 	let is_settings_open = $state(false)
+	let search_query = $state('')
 	let profile_posts = $state<ProfilePost[]>([])
 	let profile_liked_posts = $state<ProfilePost[]>([])
 	let is_liked_posts_loading = $state(false)
@@ -47,6 +48,7 @@
 		is_liked_posts_loading = false
 		liked_posts = {}
 		like_count_override = {}
+		search_query = ''
 	})
 
 	function format_join_date(date_string: Date | string) {
@@ -184,10 +186,22 @@
 				throw new Error('Follow failed')
 			}
 
-			await invalidateAll()
+			const payload = result.data as { is_following?: boolean; target_user_id?: string }
+			if (payload?.target_user_id) {
+				followed_users[payload.target_user_id] = !!payload.is_following
+			}
+
+			// If we followed/unfollowed the person whose profile we are on, we need to refresh
+			if (user_id === data.profile.id) {
+				await invalidateAll()
+			}
 		} catch (e) {
 			console.error('[toggle_follow] error', e)
 		}
+	}
+
+	function open_profile(handle: string) {
+		goto(resolve(`/profile/${handle}`))
 	}
 </script>
 
@@ -232,19 +246,18 @@
 
 			<div class="mt-3">
 				{#if data.is_owner}
-					<button
-						class="rounded-full border border-[#f3f4f6] bg-[#f3f4f6] px-4 py-1.5 text-sm font-bold text-[#0d0d0d] transition-colors hover:bg-white/90"
-					>
-						Edit Profile
-					</button>
+					<button class="profile-action-btn btn-edit-profile"> Edit Profile </button>
 				{:else}
 					<button
-						class="rounded-full border border-[#f3f4f6] {data.is_following
-							? 'bg-transparent text-[#f3f4f6]'
-							: 'bg-[#f3f4f6] text-[#0d0d0d]'} px-4 py-1.5 text-sm font-bold transition-colors hover:bg-white/10"
+						class="profile-action-btn {data.is_following ? 'btn-following' : 'btn-follow'}"
 						onclick={() => toggle_follow(data.profile.id)}
 					>
-						{data.is_following ? 'Following' : 'Follow'}
+						{#if data.is_following}
+							<span class="follow-text">Following</span>
+							<span class="unfollow-text">Unfollow</span>
+						{:else}
+							<span>Follow</span>
+						{/if}
 					</button>
 				{/if}
 			</div>
@@ -319,54 +332,72 @@
 		</div>
 	</main>
 
-	<aside class="right-sidebar">
-		{#if data.trending && data.trending.length > 0}
-			<div class="sidebar-card">
-				<h3 class="sidebar-card-title">Trending Now</h3>
-				<ul class="trending-list">
-					{#each data.trending as trend (trend.tag)}
-						<li class="trending-item">
-							<span class="trending-category">{trend.category}</span>
-							<span class="trending-tag">{trend.tag}</span>
-							<span class="trending-count">{trend.count} Echoes</span>
-						</li>
-					{/each}
-				</ul>
-				<button class="show-more-btn">Show more</button>
-			</div>
-		{/if}
-
-		{#if data.who_to_follow && data.who_to_follow.length > 0}
-			<div class="sidebar-card">
-				<h3 class="sidebar-card-title">Who to Follow</h3>
-				<ul class="follow-list">
-					{#each data.who_to_follow as user (user.handle)}
-						{@const is_following = followed_users[user.id] ?? false}
-						<li class="follow-item">
-							<img src={user.avatar_url} alt={user.name} class="follow-avatar" />
-							<div class="follow-info">
-								<span class="follow-name">{user.name}</span>
-								<span class="follow-handle">@{user.handle}</span>
-							</div>
-							<button
-								class="follow-btn"
-								class:follow-btn-active={is_following}
-								onclick={() => toggle_follow(user.id)}
-							>
-								{is_following ? 'Following' : 'Follow'}
-							</button>
-						</li>
-					{/each}
-				</ul>
-				<button class="show-more-btn">Show more</button>
-			</div>
-		{/if}
-
-		<footer class="sidebar-footer">
-			<a href={resolve('/terms')}>Terms of Service</a>
-			<a href={resolve('/privacy')}>Privacy Policy</a>
-			<a href={resolve('/cookies')}>Cookie Policy</a>
-			<span>© 2026 Y.</span>
-		</footer>
-	</aside>
+	<RightSidebar
+		trending={data.trending}
+		who_to_follow={data.who_to_follow}
+		{search_query}
+		{followed_users}
+		on_search_change={(v) => (search_query = v)}
+		on_open_profile={open_profile}
+		on_toggle_follow={toggle_follow}
+	/>
 </div>
+
+<style>
+	.profile-action-btn {
+		border-radius: 9999px;
+		border: 1px solid #f3f4f6;
+		padding: 0.375rem 1rem;
+		font-size: 0.875rem;
+		font-weight: 700;
+		transition:
+			background-color 0.15s,
+			color 0.15s,
+			border-color 0.15s;
+		cursor: pointer;
+	}
+
+	.btn-edit-profile {
+		background-color: #f3f4f6;
+		color: #0d0d0d;
+	}
+	.btn-edit-profile:hover {
+		background-color: rgba(255, 255, 255, 0.9);
+	}
+
+	.btn-follow {
+		min-width: 6.5rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: #f3f4f6;
+		color: #0d0d0d;
+	}
+	.btn-follow:hover {
+		background-color: #d1d5db;
+	}
+
+	.btn-following {
+		min-width: 6.5rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: transparent;
+		color: #f3f4f6;
+	}
+	.btn-following:hover {
+		border-color: #f43f5e;
+		background-color: rgba(244, 63, 94, 0.1);
+		color: #f43f5e;
+	}
+
+	.unfollow-text {
+		display: none;
+	}
+	.btn-following:hover .follow-text {
+		display: none;
+	}
+	.btn-following:hover .unfollow-text {
+		display: block;
+	}
+</style>

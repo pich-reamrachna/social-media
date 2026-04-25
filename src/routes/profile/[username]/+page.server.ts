@@ -11,7 +11,7 @@ import {
 import { dev } from '$app/environment'
 import { PROFILE_POSTS_LIMIT } from '$lib/constants/post'
 import { error, fail } from '@sveltejs/kit'
-import { and, desc, eq, inArray, sql, notInArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_LIKED_POSTS_LIMIT = 20
@@ -132,23 +132,23 @@ const map_post_for_frontend = (
 })
 
 const load_who_to_follow = async (viewer_id: string) => {
-	const following = await db
+	const current_following = await db
 		.select({ id: follow.followingId })
 		.from(follow)
 		.where(eq(follow.followerId, viewer_id))
-
-	const excluded = [viewer_id, ...following.map((f) => f.id)]
+	const following_set = new Set(current_following.map((f) => f.id))
 
 	const suggestions = await db.query.user.findMany({
-		where: notInArray(userTable.id, excluded),
-		limit: 3
+		where: sql`${userTable.id} != ${viewer_id}`,
+		limit: 15
 	})
 
 	return suggestions.map((u) => ({
 		id: u.id,
 		name: u.name,
 		handle: u.username || u.email?.split('@')[0] || 'user',
-		avatar_url: u.image || `https://i.pravatar.cc/150?u=${u.id}`
+		avatar_url: u.image || `https://i.pravatar.cc/150?u=${u.id}`,
+		is_following: following_set.has(u.id)
 	}))
 }
 

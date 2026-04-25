@@ -10,7 +10,7 @@ import {
 } from '$lib/server/rate-limit'
 import { FEED_LIMIT } from '$lib/constants/post'
 import { fail, redirect } from '@sveltejs/kit'
-import { desc, and, eq, inArray, sql, notInArray } from 'drizzle-orm'
+import { desc, and, eq, inArray, sql } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
@@ -219,19 +219,19 @@ const load_suggested_users = async (user_id: string) => {
 		.select({ id: follow.followingId })
 		.from(follow)
 		.where(eq(follow.followerId, user_id))
-
-	const excluded = [user_id, ...current_following.map((f) => f.id)]
+	const following_set = new Set(current_following.map((f) => f.id))
 
 	const raw_users = await db.query.user.findMany({
-		where: notInArray(user.id, excluded),
-		limit: 5
+		where: sql`${user.id} != ${user_id}`,
+		limit: 15
 	})
 
 	return raw_users.map((u) => ({
 		id: u.id,
 		name: u.name,
 		handle: u.username || u.email?.split('@')[0] || 'user',
-		avatar_url: u.image || `https://i.pravatar.cc/150?u=${u.id}`
+		avatar_url: u.image || `https://i.pravatar.cc/150?u=${u.id}`,
+		is_following: following_set.has(u.id)
 	}))
 }
 

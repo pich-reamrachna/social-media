@@ -37,6 +37,7 @@ export type FollowUser = {
 	name: string
 	handle: string
 	avatar_url: string
+	is_following?: boolean
 	stats?: {
 		followers: number
 		following: number

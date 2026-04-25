@@ -28,6 +28,8 @@
 		on_toggle_follow?: (handle: string) => void
 		is_footer_visible?: boolean
 	}>()
+	let trending_limit = $state(3)
+	let show_more_count = $state(3)
 </script>
 
 <aside class="right-sidebar">
@@ -44,7 +46,7 @@
 	<div class="sidebar-card">
 		<h3 class="sidebar-card-title">Trending Now</h3>
 		<ul class="trending-list">
-			{#each trending as trend (trend.tag)}
+			{#each trending.slice(0, trending_limit) as trend (trend.tag)}
 				<li class="trending-item">
 					<span class="trending-category">{trend.category}</span>
 					<span class="trending-tag">{trend.tag}</span>
@@ -52,31 +54,46 @@
 				</li>
 			{/each}
 		</ul>
-		<button class="show-more-btn">Show more</button>
+		{#if trending.length > trending_limit}
+			<button class="show-more-btn" onclick={() => (trending_limit += 3)}>Show more</button>
+		{/if}
 	</div>
 
 	<div class="sidebar-card">
 		<h3 class="sidebar-card-title">Who to Follow</h3>
 		<ul class="follow-list">
-			{#each who_to_follow as user (user.handle)}
-				{@const is_following = followed_users[user.handle] ?? false}
+			{#each who_to_follow.slice(0, show_more_count) as user (user.id)}
+				{@const is_following = followed_users[user.id] ?? user.is_following ?? false}
 				<li class="follow-item">
-					<img src={user.avatar_url} alt={user.name} class="follow-avatar" />
-					<div class="follow-info">
-						<span class="follow-name">{user.name}</span>
-						<span class="follow-handle">@{user.handle}</span>
-					</div>
+					<button
+						type="button"
+						class="follow-profile-link"
+						onclick={() => on_open_profile?.(user.handle)}
+					>
+						<img src={user.avatar_url} alt={user.name} class="follow-avatar" />
+						<div class="follow-info">
+							<span class="follow-name">{user.name}</span>
+							<span class="follow-handle">@{user.handle}</span>
+						</div>
+					</button>
 					<button
 						class="follow-btn"
 						class:follow-btn-active={is_following}
 						onclick={() => on_toggle_follow?.(user.id)}
+						data-following={is_following ? 'Following' : 'Follow'}
+						data-unfollow="Unfollow"
 					>
-						{is_following ? 'Following' : 'Follow'}
+						<span class="follow-text">{is_following ? 'Following' : 'Follow'}</span>
+						{#if is_following}
+							<span class="unfollow-text">Unfollow</span>
+						{/if}
 					</button>
 				</li>
 			{/each}
 		</ul>
-		<button class="show-more-btn">Show more</button>
+		{#if who_to_follow.length > show_more_count}
+			<button class="show-more-btn" onclick={() => (show_more_count += 3)}>Show more</button>
+		{/if}
 	</div>
 
 	{#if is_footer_visible}
