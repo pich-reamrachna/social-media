@@ -45,9 +45,3 @@ export type FollowUser = {
 }
 
 export type SideNavUser = FollowUser
-
-export type TrendingItem = {
-	category: string
-	tag: string
-	count: string
-}

@@ -270,12 +270,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const stats = await load_home_follow_counts(user_local.id)
 	const who_to_follow = await load_suggested_users(user_local.id)
 
-	const trending = [
-		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
-		{ category: 'ART · TRENDING', tag: '#DigitalNoir', count: '12.9K' },
-		{ category: 'MUSIC · TRENDING', tag: 'Synthetix Core', count: '8.1K' }
-	]
-
 	const current_user = {
 		id: user_local.id,
 		name: user_local.name,
@@ -287,7 +281,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		current_user,
 		posts: posts_raw.map((p) => map_home_post(p, liked_ids)),
-		trending,
 		who_to_follow
 	}
 }

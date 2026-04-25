@@ -244,12 +244,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		viewer?.id
 	)
 
-	const trending = [
-		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
-		{ category: 'ART · TRENDING', tag: '#DigitalNoir', count: '12.9K' },
-		{ category: 'MUSIC · TRENDING', tag: 'Synthetix Core', count: '8.1K' }
-	]
-
 	if (dev) log_dev_duration('[profile.load] total load took', started)
 
 	return {
@@ -258,7 +252,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		is_following,
 		profile: map_profile_data(profile_user, profile_stats),
 		posts: posts_raw.map((entry) => map_post_for_frontend(entry, liked_ids)),
-		trending,
 		who_to_follow
 	}
 }

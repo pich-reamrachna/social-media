@@ -9,12 +9,7 @@
 	import '../../home/home.css'
 
 	import type { PageData } from './$types'
-	import {
-		type SideNavUser,
-		type ProfileData,
-		type ProfilePost,
-		type TrendingItem
-	} from '$lib/types'
+	import { type SideNavUser, type ProfileData, type ProfilePost } from '$lib/types'
 
 	const {
 		data
@@ -26,7 +21,6 @@
 			is_owner: boolean
 			is_following: boolean
 			who_to_follow: SideNavUser[]
-			trending: TrendingItem[]
 		}
 	} = $props()
 
@@ -433,7 +427,6 @@
 	</main>
 
 	<RightSidebar
-		trending={data.trending}
 		{who_to_follow}
 		on_open_profile={open_profile}
 		on_toggle_follow={sidebar_toggle_follow}

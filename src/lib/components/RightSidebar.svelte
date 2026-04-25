@@ -4,10 +4,9 @@
 	import SearchDropdown from '$lib/components/SearchDropdown.svelte'
 
 	import { SvelteSet } from 'svelte/reactivity'
-	import { type FollowUser, type TrendingItem } from '$lib/types'
+	import { type FollowUser } from '$lib/types'
 
 	const {
-		trending,
 		who_to_follow,
 		search_query = '',
 		search_users = [],
@@ -17,7 +16,6 @@
 		on_toggle_follow,
 		is_footer_visible = true
 	} = $props<{
-		trending: TrendingItem[]
 		who_to_follow: FollowUser[]
 		search_query?: string
 		search_users?: FollowUser[]
@@ -28,7 +26,6 @@
 		is_footer_visible?: boolean
 	}>()
 
-	let trending_limit = $state(3)
 	let show_more_count = $state(3)
 	const recently_followed = new SvelteSet<string>()
 	const dismissed_users = new SvelteSet<string>()
@@ -41,11 +38,6 @@
 				(!u.is_following || recently_followed.has(u.id)) && !dismissed_users.has(u.id)
 		)
 	)
-
-	const toggle_trending_limit = () => {
-		trending_limit =
-			trending_limit >= trending.length ? 3 : Math.min(trending.length, trending_limit + 3)
-	}
 
 	const toggle_who_to_follow_limit = () => {
 		show_more_count =
@@ -85,24 +77,6 @@
 			{...on_apply_keyword_search ? { on_apply_keyword_search } : {}}
 		/>
 	{/if}
-
-	<div class="sidebar-card">
-		<h3 class="sidebar-card-title">Trending Now</h3>
-		<ul class="trending-list">
-			{#each trending.slice(0, trending_limit) as trend (trend.tag)}
-				<li class="trending-item">
-					<span class="trending-category">{trend.category}</span>
-					<span class="trending-tag">{trend.tag}</span>
-					<span class="trending-count">{trend.count} Echoes</span>
-				</li>
-			{/each}
-		</ul>
-		{#if trending.length > 3}
-			<button class="show-more-btn" onclick={toggle_trending_limit}>
-				{trending_limit >= trending.length ? 'Show less' : 'Show more'}
-			</button>
-		{/if}
-	</div>
 
 	<div class="sidebar-card">
 		<h3 class="sidebar-card-title">Who to Follow</h3>
