@@ -11,7 +11,7 @@ import { dev } from '$app/environment'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { upload_cloudinary } from '$lib/server/cloudinary'
-import { validate_username } from '$lib/constants/auth'
+import { MAX_BIO_LENGTH, validate_username } from '$lib/constants/auth'
 import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_POSTS_LIMIT = 20
@@ -32,6 +32,20 @@ const load_profile_user = async (target_username: string) => {
 	})
 	log_dev_duration('[profile.load] profile user query took', started_at)
 	return profile_user
+}
+
+const get_uploaded_profile_images = async (avatar_file: File | null, banner_file: File | null) => {
+	const uploaded: Pick<Partial<typeof user.$inferSelect>, 'image' | 'banner'> = {}
+
+	if (avatar_file instanceof File && avatar_file.size > 0) {
+		uploaded.image = await upload_cloudinary(avatar_file, 'avatars')
+	}
+
+	if (banner_file instanceof File && banner_file.size > 0) {
+		uploaded.banner = await upload_cloudinary(banner_file, 'banners')
+	}
+
+	return uploaded
 }
 
 const load_profile_posts = async (user_id: string) => {
@@ -265,6 +279,7 @@ export const actions: Actions = {
 		const avatar_file = form_data.get('avatar') as File | null
 		const next_username =
 			typeof username_value === 'string' ? username_value.trim().toLowerCase() : ''
+		const next_bio = typeof bio === 'string' ? bio.trim() : ''
 
 		if (typeof name !== 'string' || !name.trim()) {
 			return fail(400, { message: 'Name is required' })
@@ -272,6 +287,10 @@ export const actions: Actions = {
 
 		if (name.length > 50) {
 			return fail(400, { message: 'Name must be under 50 characters' })
+		}
+
+		if (next_bio.length > MAX_BIO_LENGTH) {
+			return fail(400, { message: `Bio must be under ${MAX_BIO_LENGTH} characters` })
 		}
 
 		const username_validation = validate_username(next_username)
@@ -290,23 +309,12 @@ export const actions: Actions = {
 		const update_payload: Partial<typeof user.$inferSelect> = {
 			name: name.trim(),
 			username: next_username,
-			displayUsername: next_username
-		}
-
-		if (typeof bio === 'string') {
-			update_payload.bio = bio.trim()
+			displayUsername: next_username,
+			bio: next_bio
 		}
 
 		try {
-			if (avatar_file instanceof File && avatar_file.size > 0) {
-				const avatar_url = await upload_cloudinary(avatar_file, 'avatars')
-				update_payload.image = avatar_url
-			}
-
-			if (banner_file instanceof File && banner_file.size > 0) {
-				const banner_url = await upload_cloudinary(banner_file, 'banners')
-				update_payload.banner = banner_url
-			}
+			Object.assign(update_payload, await get_uploaded_profile_images(avatar_file, banner_file))
 
 			await db.update(user).set(update_payload).where(eq(user.id, viewer.id))
 

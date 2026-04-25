@@ -1,6 +1,7 @@
 export const MIN_USERNAME_LENGTH = 3
 export const MAX_USERNAME_LENGTH = 20
 export const MIN_PASSWORD_LENGTH = 12
+export const MAX_BIO_LENGTH = 160
 export const VALID_USERNAME_REGEX = /^[a-z0-9._]+$/
 
 export type UsernameValidationResult = { ok: true; message: '' } | { ok: false; message: string }

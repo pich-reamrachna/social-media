@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms'
 	import { goto } from '$app/navigation'
-	import { validate_username } from '$lib/constants/auth'
+	import { MAX_BIO_LENGTH, validate_username } from '$lib/constants/auth'
 
 	type ProfileFormProfile = {
 		name: string
@@ -52,6 +52,7 @@
 	})
 
 	const has_errors = $derived(username_status === 'error' || username_status === 'checking')
+	const remaining_bio_chars = $derived(MAX_BIO_LENGTH - bio.length)
 
 	const reset_previews = () => {
 		if (avatar_preview) URL.revokeObjectURL(avatar_preview)
@@ -325,13 +326,22 @@
 				>
 					Bio
 				</label>
-				<textarea
-					id="bio"
-					name="bio"
-					rows="3"
-					bind:value={bio}
-					class="resize-none rounded-lg border border-[#333] bg-[#0a0a0a] px-3 py-3 text-[0.95rem] text-[#f3f4f6] focus:border-[#ff3377] focus:ring-1 focus:ring-[#ff3377] focus:outline-none"
-				></textarea>
+				<div class="relative">
+					<textarea
+						id="bio"
+						name="bio"
+						rows="3"
+						maxlength={MAX_BIO_LENGTH}
+						bind:value={bio}
+						class="w-full resize-none rounded-lg border border-[#333] bg-[#0a0a0a] px-3 py-3 text-[0.95rem] text-[#f3f4f6] focus:border-[#ff3377] focus:ring-1 focus:ring-[#ff3377] focus:outline-none"
+					></textarea>
+					<div
+						class="mt-2 text-right text-xs font-medium text-[#6b7280]"
+						class:text-[#ff7eb3]={remaining_bio_chars <= 20}
+					>
+						{remaining_bio_chars}
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>

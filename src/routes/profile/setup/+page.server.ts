@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db'
 import { user } from '$lib/server/db/auth.schema'
-import { validate_username } from '$lib/constants/auth'
+import { MAX_BIO_LENGTH, validate_username } from '$lib/constants/auth'
 import { upload_cloudinary } from '$lib/server/cloudinary'
 import { eq } from 'drizzle-orm'
 import { fail, redirect } from '@sveltejs/kit'
@@ -46,6 +46,13 @@ export const actions: Actions = {
 		if (name.length > 50) {
 			return fail(400, {
 				message: 'Displayed name must be under 50 characters',
+				...submitted_values
+			})
+		}
+
+		if (bio.length > MAX_BIO_LENGTH) {
+			return fail(400, {
+				message: `Bio must be under ${MAX_BIO_LENGTH} characters`,
 				...submitted_values
 			})
 		}

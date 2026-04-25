@@ -222,7 +222,7 @@
 			<h1 class="m-0 text-2xl leading-tight font-extrabold">{data.profile.name}</h1>
 			<span class="text-[0.95rem] text-[#6b7280]">@{data.profile.handle}</span>
 
-			<p class="my-3 text-[0.9375rem] leading-[1.6] text-[#e5e7eb]">
+			<p class="my-3 text-[0.9375rem] leading-[1.6] break-words whitespace-pre-wrap text-[#e5e7eb]">
 				{data.profile.bio}
 			</p>
 
