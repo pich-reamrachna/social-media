@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			banner_url:
 				locals.user.banner ||
 				'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop',
-			avatar_url: locals.user.image || `https://i.pravatar.cc/150?u=${locals.user.id}`
+			avatar_url: locals.user.image || '/profile.png'
 		}
 	}
 }

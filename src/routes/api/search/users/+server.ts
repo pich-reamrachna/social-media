@@ -36,7 +36,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		id: u.id,
 		name: u.name,
 		handle: u.username!,
-		avatar_url: u.image || `https://i.pravatar.cc/150?u=${u.id}`,
+		avatar_url: u.image || '/profile.png',
 		is_following: following_ids.has(u.id)
 	}))
 

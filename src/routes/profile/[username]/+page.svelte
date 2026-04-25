@@ -333,8 +333,7 @@
 					alt={data.profile.name}
 					class="h-30 w-30 rounded-full border-4 border-[#0d0d0d] bg-[#1f1f1f] object-cover"
 					onerror={(e) => {
-						;(e.currentTarget as HTMLImageElement).src =
-							`https://i.pravatar.cc/150?u=${data.profile.id}`
+						;(e.currentTarget as HTMLImageElement).src = '/profile.png'
 					}}
 					onload={() => {
 						if (is_avatar_updating && data.profile.avatar_url !== avatar_url_at_save) {

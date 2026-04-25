@@ -33,7 +33,7 @@ const load_who_to_follow = async (viewer_id: string) => {
 		id: u.id,
 		name: u.name,
 		handle: u.username!,
-		avatar_url: u.image || `https://i.pravatar.cc/150?u=${u.id}`,
+		avatar_url: u.image || '/profile.png',
 		is_following: false
 	}))
 }
