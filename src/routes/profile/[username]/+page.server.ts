@@ -12,6 +12,8 @@ import { dev } from '$app/environment'
 import { PROFILE_POSTS_LIMIT } from '$lib/constants/post'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { upload_cloudinary } from '$lib/server/cloudinary'
+import { MAX_BIO_LENGTH, validate_username } from '$lib/constants/auth'
 import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_LIKED_POSTS_LIMIT = 20
@@ -34,6 +36,20 @@ const load_profile_user = async (target_username: string) => {
 	return profile_user
 }
 
+const get_uploaded_profile_images = async (avatar_file: File | null, banner_file: File | null) => {
+	const uploaded: Pick<Partial<typeof userTable.$inferSelect>, 'image' | 'banner'> = {}
+
+	if (avatar_file instanceof File && avatar_file.size > 0) {
+		uploaded.image = await upload_cloudinary(avatar_file, 'avatars')
+	}
+
+	if (banner_file instanceof File && banner_file.size > 0) {
+		uploaded.banner = await upload_cloudinary(banner_file, 'banners')
+	}
+
+	return uploaded
+}
+
 const load_follow_counts = async (user_id: string) => {
 	const [follower_res] = await db
 		.select({ count: sql<number>`count(*)` })
@@ -44,8 +60,8 @@ const load_follow_counts = async (user_id: string) => {
 		.from(follow)
 		.where(eq(follow.followerId, user_id))
 	return {
-		followers: follower_res?.count ?? 0,
-		following: following_res?.count ?? 0
+		followers: Number(follower_res?.count ?? 0),
+		following: Number(following_res?.count ?? 0)
 	}
 }
 
@@ -122,27 +138,6 @@ const map_post_for_frontend = (
 	}
 })
 
-const load_who_to_follow = async (viewer_id: string) => {
-	const current_following = await db
-		.select({ id: follow.followingId })
-		.from(follow)
-		.where(eq(follow.followerId, viewer_id))
-	const following_set = new Set(current_following.map((f) => f.id))
-
-	const suggestions = await db.query.user.findMany({
-		where: sql`${userTable.id} != ${viewer_id}`,
-		limit: 15
-	})
-
-	return suggestions.map((u) => ({
-		id: u.id,
-		name: u.name,
-		handle: u.username || u.email?.split('@')[0] || 'user',
-		avatar_url: u.image || `https://i.pravatar.cc/150?u=${u.id}`,
-		is_following: following_set.has(u.id)
-	}))
-}
-
 const load_profile_and_stats = async (target_username: string) => {
 	const user = await load_profile_user(target_username)
 	if (!user) throw error(404, { message: 'Profile not found' })
@@ -212,7 +207,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		viewer?.id
 	)
 
-	const who_to_follow = viewer ? await load_who_to_follow(viewer.id) : []
 	const trending = [
 		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
 		{ category: 'ART · TRENDING', tag: '#DigitalNoir', count: '12.9K' },
@@ -227,8 +221,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		is_following,
 		profile: map_profile_data(profile_user, profile_stats),
 		posts: posts_raw.map((entry) => map_post_for_frontend(entry, liked_ids)),
-		trending,
-		who_to_follow
+		trending
 	}
 }
 
@@ -321,13 +314,12 @@ export const actions: Actions = {
 		}
 
 		const form_data = await request.formData()
-		const target_user_id = form_data.get('userId') as string
+		const target_user_id = form_data.get('userId')
 
-		if (!target_user_id || target_user_id === viewer.id) {
+		if (typeof target_user_id !== 'string' || !target_user_id || target_user_id === viewer.id) {
 			return fail(400, { message: 'Invalid follow request' })
 		}
 
-		// Double-check target user existence for security
 		const target_user = await db.query.user.findFirst({
 			where: eq(userTable.id, target_user_id)
 		})
@@ -349,20 +341,70 @@ export const actions: Actions = {
 			} else {
 				await db
 					.insert(follow)
-					.values({
-						followerId: viewer.id,
-						followingId: target_user_id
-					})
+					.values({ followerId: viewer.id, followingId: target_user_id })
 					.onConflictDoNothing()
 			}
 		} catch {
 			return fail(500, { message: 'Failed to update follow' })
 		}
 
-		return {
-			success: true,
-			target_user_id,
-			is_following
+		return { success: true, target_user_id, is_following }
+	},
+	updateProfile: async ({ request, locals }) => {
+		const viewer = locals.user
+		if (!viewer) {
+			return fail(401, { message: 'Unauthorized' })
+		}
+
+		const form_data = await request.formData()
+		const name = form_data.get('name')
+		const username_value = form_data.get('username')
+		const bio = form_data.get('bio')
+		const banner_file = form_data.get('banner') as File | null
+		const avatar_file = form_data.get('avatar') as File | null
+		const next_username =
+			typeof username_value === 'string' ? username_value.trim().toLowerCase() : ''
+		const next_bio = typeof bio === 'string' ? bio.trim() : ''
+
+		if (typeof name !== 'string' || !name.trim()) {
+			return fail(400, { message: 'Name is required' })
+		}
+
+		if (name.length > 50) {
+			return fail(400, { message: 'Name must be under 50 characters' })
+		}
+
+		if (next_bio.length > MAX_BIO_LENGTH) {
+			return fail(400, { message: `Bio must be under ${MAX_BIO_LENGTH} characters` })
+		}
+
+		const username_validation = validate_username(next_username)
+		if (!username_validation.ok) {
+			return fail(400, { message: username_validation.message })
+		}
+
+		const existing_user = await db.query.user.findFirst({
+			where: eq(userTable.username, next_username),
+			columns: { id: true }
+		})
+		if (existing_user && existing_user.id !== viewer.id) {
+			return fail(400, { message: 'Username already taken' })
+		}
+
+		const update_payload: Partial<typeof userTable.$inferSelect> = {
+			name: name.trim(),
+			username: next_username,
+			displayUsername: next_username,
+			bio: next_bio
+		}
+
+		try {
+			Object.assign(update_payload, await get_uploaded_profile_images(avatar_file, banner_file))
+			await db.update(userTable).set(update_payload).where(eq(userTable.id, viewer.id))
+			return { success: true, profile_url: `/profile/${next_username}` }
+		} catch (err) {
+			console.error('Update failed: ', err)
+			return fail(500, { message: 'Failed to update profile' })
 		}
 	}
 }

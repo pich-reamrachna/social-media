@@ -38,3 +38,6 @@ words:
   - topbar
   - unstub
   - vitest
+  - NXDOMAIN
+  - addrs
+  - ilike

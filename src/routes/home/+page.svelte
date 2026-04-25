@@ -2,7 +2,6 @@
 	import { resolve } from '$app/paths'
 	import { enhance } from '$app/forms'
 	import { goto } from '$app/navigation'
-	import { SvelteMap } from 'svelte/reactivity'
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import RightSidebar from '$lib/components/RightSidebar.svelte'
@@ -31,7 +30,9 @@
 		{ id: 'following', label: 'Following' }
 	]
 	let search_query = $state('')
+	let search_results = $state<SideNavUser[]>([])
 	let applied_keyword_search = $state('')
+	let search_timer: ReturnType<typeof setTimeout> | undefined
 	let is_settings_open = $state(false)
 	let post_draft = $state('')
 	let composer_form: HTMLFormElement | undefined = $state(undefined)
@@ -40,7 +41,6 @@
 	let selected_image_preview = $state<string | undefined>(undefined)
 	const liked_posts = $state<Record<string, boolean>>({})
 	const like_count_override = $state<Record<string, number>>({})
-	const followed_users = $state<Record<string, boolean>>({})
 
 	let is_posting = $state(false)
 	let is_error_banner_visible = $state(false)
@@ -114,20 +114,13 @@
 		const form_data = new FormData()
 		form_data.append('userId', user_id)
 
-		try {
-			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
-			const result = deserialize(await response.text())
+		const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
+		const result = deserialize(await response.text())
 
-			if (result.type !== 'success') throw new Error()
+		if (result.type !== 'success') throw new Error('Follow failed')
 
-			const payload = result.data as { is_following?: boolean; target_user_id?: string }
-			if (payload.target_user_id) {
-				followed_users[payload.target_user_id] = !!payload.is_following
-			}
-			show_toast('success', payload.is_following ? 'Followed!' : 'Unfollowed')
-		} catch {
-			show_toast('error', 'Failed to update follow')
-		}
+		const payload = result.data as { is_following?: boolean }
+		show_toast('success', payload.is_following ? 'Followed!' : 'Unfollowed')
 	}
 
 	function filter_posts() {
@@ -137,41 +130,28 @@
 		return data.posts.filter((post: FeedPost) => post.content.toLowerCase().includes(q))
 	}
 
-	function get_search_users(): SideNavUser[] {
-		const users = new SvelteMap<string, SideNavUser>()
-
-		const add_user = (user: SideNavUser) => {
-			const normalized_handle = user.handle.trim().toLowerCase()
-			if (!normalized_handle || users.has(normalized_handle)) return
-			users.set(normalized_handle, user)
+	function fetch_search_users(q: string) {
+		if (search_timer) clearTimeout(search_timer)
+		if (!q.trim()) {
+			search_results = []
+			return
 		}
-
-		add_user(data.current_user)
-
-		for (const post of data.posts) {
-			add_user(post.author as SideNavUser)
-		}
-
-		for (const user of data.who_to_follow) {
-			add_user(user)
-		}
-
-		return [...users.values()]
+		search_timer = setTimeout(async () => {
+			const res = await fetch(`/api/search/users?q=${encodeURIComponent(q.trim())}`)
+			if (!res.ok) return
+			const payload = (await res.json()) as { users: SideNavUser[] }
+			search_results = payload.users
+		}, 300)
 	}
 
-	function get_matched_users(): SideNavUser[] {
-		const q = search_query.toLowerCase().trim()
-		if (!q) return []
-
-		return get_search_users()
-			.filter(
-				(user) => user.name.toLowerCase().includes(q) || user.handle.toLowerCase().includes(q)
-			)
-			.slice(0, 6)
+	function on_search_change(value: string) {
+		search_query = value
+		fetch_search_users(value)
 	}
 
 	function open_profile(handle: string) {
 		search_query = ''
+		search_results = []
 		goto(resolve(`/profile/${handle}`))
 	}
 
@@ -181,6 +161,7 @@
 
 		applied_keyword_search = q
 		search_query = ''
+		search_results = []
 	}
 
 	function clear_keyword_search() {
@@ -332,8 +313,8 @@
 				extra_class="feed-search-main"
 				aria_label="Search posts"
 				{search_query}
-				search_users={get_matched_users()}
-				on_search_change={(value: string) => (search_query = value)}
+				search_users={search_results}
+				{on_search_change}
 				on_open_profile={open_profile}
 				on_apply_keyword_search={apply_keyword_search}
 			/>
@@ -497,9 +478,8 @@
 		trending={data.trending}
 		who_to_follow={data.who_to_follow}
 		{search_query}
-		search_users={get_matched_users()}
-		{followed_users}
-		on_search_change={(value: string) => (search_query = value)}
+		search_users={search_results}
+		{on_search_change}
 		on_open_profile={open_profile}
 		on_apply_keyword_search={apply_keyword_search}
 		on_toggle_follow={toggle_follow}

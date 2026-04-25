@@ -214,27 +214,6 @@ const load_home_follow_counts = async (user_id: string) => {
 	}
 }
 
-const load_suggested_users = async (user_id: string) => {
-	const current_following = await db
-		.select({ id: follow.followingId })
-		.from(follow)
-		.where(eq(follow.followerId, user_id))
-	const following_set = new Set(current_following.map((f) => f.id))
-
-	const raw_users = await db.query.user.findMany({
-		where: sql`${user.id} != ${user_id}`,
-		limit: 15
-	})
-
-	return raw_users.map((u) => ({
-		id: u.id,
-		name: u.name,
-		handle: u.username || u.email?.split('@')[0] || 'user',
-		avatar_url: u.image || `https://i.pravatar.cc/150?u=${u.id}`,
-		is_following: following_set.has(u.id)
-	}))
-}
-
 export const load: PageServerLoad = async ({ locals }) => {
 	const user_local = locals.user
 	if (!user_local) throw redirect(302, '/login')
@@ -256,7 +235,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 		liked_ids = new Set(likes_raw.map((l) => l.post_id))
 	}
 
-	const who_to_follow = await load_suggested_users(user_local.id)
 	const stats = await load_home_follow_counts(user_local.id)
 
 	const trending = [
@@ -276,8 +254,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		current_user,
 		posts: posts_raw.map((p) => map_home_post(p, liked_ids)),
-		trending,
-		who_to_follow
+		trending
 	}
 }
 

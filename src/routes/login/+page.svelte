@@ -2,14 +2,19 @@
 	import { resolve } from '$app/paths'
 	import type { ActionData, PageData } from './$types'
 
-	let username = $state('')
+	let identifier = $state('')
 	let password = $state('')
 	let should_remember_me = $state(false)
 	let is_show_password = $state(false)
+	let is_signing_in = $state(false)
 
 	const { form, data } = $props<{ form: ActionData; data: PageData }>()
 
-	// toggle show password
+	$effect(() => {
+		identifier = form?.identifier ?? data.prefill_identifier ?? ''
+		should_remember_me = form?.should_remember_me ?? false
+	})
+
 	const toggle_password = () => {
 		is_show_password = !is_show_password
 	}
@@ -83,7 +88,13 @@
 				</p>
 			</div>
 
-			<form method="POST" class="space-y-5 sm:space-y-6">
+			<form
+				method="POST"
+				class="space-y-5 sm:space-y-6"
+				onsubmit={() => {
+					is_signing_in = true
+				}}
+			>
 				{#if data.verification_sent}
 					<p
 						class="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
@@ -102,17 +113,18 @@
 
 				<div>
 					<label
-						for="username"
+						for="identifier"
 						class="mb-2 block text-[9px] font-medium tracking-[0.22em] text-gray-500 uppercase sm:text-[10px]"
 					>
-						Username
+						Email or Username
 					</label>
 					<input
 						type="text"
-						id="username"
-						name="username"
-						bind:value={username}
-						placeholder="Enter your username"
+						id="identifier"
+						name="identifier"
+						bind:value={identifier}
+						placeholder="Enter your email or username"
+						autocomplete="username"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none sm:py-3.5"
 						required
 					/>
@@ -197,6 +209,7 @@
 						<input
 							type="checkbox"
 							id="should_remember_me"
+							name="should_remember_me"
 							bind:checked={should_remember_me}
 							class="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-700 bg-transparent transition-all checked:border-[#ff5c8d] checked:bg-[#ff5c8d]"
 						/>
@@ -228,9 +241,10 @@
 				<div class="pt-3 sm:pt-4">
 					<button
 						type="submit"
-						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] sm:py-4"
+						disabled={is_signing_in}
+						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none sm:py-4"
 					>
-						Sign In
+						{is_signing_in ? 'Signing in...' : 'Sign In'}
 					</button>
 				</div>
 			</form>

@@ -88,7 +88,10 @@ const load_session_if_needed = async (
 		}
 
 		const session_started_at = dev ? performance.now() : 0
-		const session = await auth.api.getSession({ headers: event.request.headers })
+		const session = await auth.api.getSession({
+			headers: event.request.headers,
+			query: is_protected_route(pathname) ? { disableCookieCache: true } : undefined
+		})
 		if (dev) {
 			console.info(
 				`[auth] getSession ${request_label} took ${Math.round(performance.now() - session_started_at)}ms`
