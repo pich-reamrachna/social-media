@@ -334,25 +334,36 @@ export const actions: Actions = {
 		})
 		if (!target_user) return fail(404, { message: 'User not found' })
 
+		let is_following = false
+
 		try {
 			const existing_follow = await db.query.follow.findFirst({
 				where: and(eq(follow.followerId, viewer.id), eq(follow.followingId, target_user_id))
 			})
+
+			is_following = !existing_follow
 
 			if (existing_follow) {
 				await db
 					.delete(follow)
 					.where(and(eq(follow.followerId, viewer.id), eq(follow.followingId, target_user_id)))
 			} else {
-				await db.insert(follow).values({
-					followerId: viewer.id,
-					followingId: target_user_id
-				})
+				await db
+					.insert(follow)
+					.values({
+						followerId: viewer.id,
+						followingId: target_user_id
+					})
+					.onConflictDoNothing()
 			}
 		} catch {
 			return fail(500, { message: 'Failed to update follow' })
 		}
 
-		return { success: true }
+		return {
+			success: true,
+			target_user_id,
+			is_following
+		}
 	}
 }
