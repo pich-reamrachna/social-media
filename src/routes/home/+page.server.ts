@@ -212,8 +212,8 @@ const load_home_follow_counts = async (user_id: string) => {
 		.from(follow)
 		.where(eq(follow.followerId, user_id))
 	return {
-		followers: followers?.count ?? 0,
-		following: following?.count ?? 0
+		followers: Number(followers?.count ?? 0),
+		following: Number(following?.count ?? 0)
 	}
 }
 

@@ -203,7 +203,8 @@
 	opacity: 0.8;
 }
 
-.follow-btn-active:not(:disabled):hover {
+.follow-btn-active:not(:disabled):hover,
+.follow-btn-active:not(:disabled):focus-visible {
 	background: rgba(244, 63, 94, 0.1);
 	border-color: #f43f5e;
 	color: #f43f5e;
@@ -213,11 +214,13 @@
 	display: none;
 }
 
-.follow-btn-active:not(:disabled):hover .follow-text {
+.follow-btn-active:not(:disabled):hover .follow-text,
+.follow-btn-active:not(:disabled):focus-visible .follow-text {
 	display: none;
 }
 
-.follow-btn-active:not(:disabled):hover .unfollow-text {
+.follow-btn-active:not(:disabled):hover .unfollow-text,
+.follow-btn-active:not(:disabled):focus-visible .unfollow-text {
 	display: inline;
 }
 

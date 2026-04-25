@@ -67,6 +67,11 @@
 	const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 	const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
+	function get_safe_count(count: number | string | undefined) {
+		const parsed_count = Number(count ?? 0)
+		return Number.isFinite(parsed_count) ? Math.max(0, parsed_count) : 0
+	}
+
 	// Reactive character count
 	// eslint-disable-next-line prefer-const
 	let character_count = $derived(post_draft.length)
@@ -142,10 +147,10 @@
 			current_user = {
 				...current_user_snapshot,
 				stats: {
-					followers: current_user_snapshot.stats?.followers ?? 0,
+					followers: get_safe_count(current_user_snapshot.stats?.followers),
 					following: Math.max(
 						0,
-						(current_user_snapshot.stats?.following ?? 0) + (payload.is_following ? 1 : -1)
+						get_safe_count(current_user_snapshot.stats?.following) + (payload.is_following ? 1 : -1)
 					)
 				}
 			}
