@@ -1,14 +1,51 @@
-// src/routes/register/+page.server.ts
+import { resolveMx, resolve4, resolve6 } from 'node:dns/promises'
 import { fail, redirect } from '@sveltejs/kit'
 import { APIError } from 'better-auth/api'
 import { auth } from '$lib/server/auth'
 import { consume_rate_limit, get_rate_limit_error, peek_rate_limit } from '$lib/server/rate-limit'
+import { send_email } from '$lib/server/email'
+import { env } from '$env/dynamic/private'
 import type { Actions, PageServerLoad } from './$types'
 import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
 const REGISTER_LIMIT = { limit: 3, windowMs: 60_000 }
-const DUPLICATE_ACCOUNT_ERROR = 'Account already exists'
-const DUPLICATE_USERNAME_ERROR = 'Username already taken'
+const REGISTER_ERROR = 'Unable to create account'
+
+const domain_has_mx_records = async (email: string): Promise<boolean> => {
+	const domain = email.slice(email.lastIndexOf('@') + 1).toLowerCase()
+	if (!domain) return false
+
+	let should_try_a_aaaa = false
+	try {
+		const records = await resolveMx(domain)
+		if (records.length > 0) return true
+		// MX query returned empty — RFC 5321 A/AAAA fallback applies
+		should_try_a_aaaa = true
+	} catch (error) {
+		const code = (error as { code?: string }).code
+		if (code === 'ENODATA') {
+			// Domain exists but has no MX records — RFC 5321 A/AAAA fallback applies
+			should_try_a_aaaa = true
+		}
+		// ENOTFOUND (NXDOMAIN) or other DNS failure — domain is invalid
+	}
+
+	if (!should_try_a_aaaa) return false
+
+	try {
+		const addrs = await resolve4(domain)
+		if (addrs.length > 0) return true
+	} catch {
+		// no A records
+	}
+
+	try {
+		const addrs = await resolve6(domain)
+		return addrs.length > 0
+	} catch {
+		return false
+	}
+}
 
 const get_string = (formData: FormData, key: string) => {
 	const value = formData.get(key)
@@ -29,31 +66,21 @@ const validate_password_strength = (password: string) => {
 	return errors
 }
 
-const get_register_error_message = (error_message: string | undefined) => {
-	const normalized_error = error_message?.toLowerCase() || ''
-
-	// Keep email-related failures generic for privacy, including mixed username+email conflicts.
-	if (normalized_error.includes('email')) {
-		return DUPLICATE_ACCOUNT_ERROR
-	}
-
-	return normalized_error.includes('username') ? DUPLICATE_USERNAME_ERROR : DUPLICATE_ACCOUNT_ERROR
-}
-
 const get_register_rate_limit_failure = async (
-	consume_failed_attempt: () => ReturnType<typeof consume_rate_limit>
+	consume_failed_attempt: () => ReturnType<typeof consume_rate_limit>,
+	values: { email: string }
 ) => {
 	const failed_attempt_rate_limit = await consume_failed_attempt()
 
 	return failed_attempt_rate_limit.ok
 		? undefined
-		: fail(
-				429,
-				get_rate_limit_error(
+		: fail(429, {
+				...get_rate_limit_error(
 					failed_attempt_rate_limit.retryAfterSeconds,
 					'Too many registration attempts.'
-				)
-			)
+				),
+				...values
+			})
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -75,10 +102,10 @@ export const actions: Actions = {
 		}
 
 		const form_data = await event.request.formData()
-		const username = get_string(form_data, 'username')
 		const email = get_string(form_data, 'email')
 		const password = get_string(form_data, 'password')
 		const confirm_password = get_string(form_data, 'confirm_password')
+		const submitted_values = { email }
 		const consume_failed_attempt = async () =>
 			consume_rate_limit({
 				key: rate_limit_key,
@@ -87,21 +114,33 @@ export const actions: Actions = {
 
 		const password_strength_errors = validate_password_strength(password)
 		if (password_strength_errors.length > 0) {
-			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
+			const rate_limit_failure = await get_register_rate_limit_failure(
+				consume_failed_attempt,
+				submitted_values
+			)
 			if (rate_limit_failure) return rate_limit_failure
 
 			return fail(400, {
 				message: `Password must include ${password_strength_errors.join(', ')}`,
-				username,
-				email
+				...submitted_values
 			})
 		}
 
 		if (password !== confirm_password) {
-			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
+			const rate_limit_failure = await get_register_rate_limit_failure(
+				consume_failed_attempt,
+				submitted_values
+			)
 			if (rate_limit_failure) return rate_limit_failure
 
-			return fail(400, { message: 'Passwords do not match', username, email })
+			return fail(400, { message: 'Passwords do not match', ...submitted_values })
+		}
+
+		if (!(await domain_has_mx_records(email))) {
+			return fail(400, {
+				message: 'Email address appears to be invalid. Please check the domain.',
+				...submitted_values
+			})
 		}
 
 		try {
@@ -109,22 +148,45 @@ export const actions: Actions = {
 				body: {
 					email,
 					password,
-					name: username,
-					username
+					name: email.slice(0, email.lastIndexOf('@')) || email
 				}
 			})
 		} catch (error) {
 			if (!(error instanceof APIError)) {
-				return fail(500, { message: 'Unexpected error', username, email })
+				return fail(500, { message: 'Unexpected error', ...submitted_values })
 			}
 
-			const rate_limit_failure = await get_register_rate_limit_failure(consume_failed_attempt)
+			const rate_limit_failure = await get_register_rate_limit_failure(
+				consume_failed_attempt,
+				submitted_values
+			)
 			if (rate_limit_failure) return rate_limit_failure
 
+			if (error.message.toLowerCase().includes('email')) {
+				const login_url = `${env.ORIGIN}/login?identifier=${encodeURIComponent(email)}`
+				send_email({
+					to: email,
+					subject: 'Your Y account already exists',
+					text: `Someone tried to create a Y account using this email, but you already have one. Sign in at: ${login_url}`,
+					html: `
+						<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+							<h1 style="margin-bottom: 16px;">Account already exists</h1>
+							<p style="margin-bottom: 16px;">
+								Someone tried to create a Y account using this email, but you already have one.
+							</p>
+							<p style="margin-bottom: 24px;">
+								<a href="${login_url}" style="color: #db2777;">Sign in to your account</a>
+							</p>
+							<p>If this wasn't you, you can safely ignore this email.</p>
+						</div>
+					`
+				}).catch((e) => console.error('[register] account-exists email failed:', e))
+				throw redirect(302, '/login?verification=sent')
+			}
+
 			return fail(400, {
-				message: get_register_error_message(error.message),
-				username,
-				email
+				message: REGISTER_ERROR,
+				...submitted_values
 			})
 		}
 

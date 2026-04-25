@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { deserialize, enhance } from '$app/forms'
+	import { deserialize } from '$app/forms'
 	import { resolve } from '$app/paths'
 
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
+	import EditProfileForm from '$lib/components/EditProfileForm.svelte'
 	import '../../home/home.css'
 	import '$lib/components/RightSidebar.css'
 
@@ -24,10 +25,6 @@
 
 	// Modal States
 	let is_edit_modal_open = $state(false)
-	let is_saving_profile = $state(false)
-	let form_error = $state('')
-	let avatar_preview = $state('')
-	let banner_preview = $state('')
 
 	$effect(() => {
 		profile_posts = [...data.posts]
@@ -42,18 +39,6 @@
 		if (!dateString) return 'Unknown Date'
 		const date = new Date(dateString)
 		return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-	}
-
-	function handle_file_preview(event: Event, type: 'avatar' | 'banner') {
-		const input = event.target as HTMLInputElement
-		if (!input.files || input.files.length === 0) return
-
-		const file = input.files[0]
-		if (!file) return
-
-		const url = URL.createObjectURL(file)
-		if (type === 'avatar') avatar_preview = url
-		if (type === 'banner') banner_preview = url
 	}
 
 	const displayed_posts = $derived.by(() => {
@@ -237,7 +222,7 @@
 			<h1 class="m-0 text-2xl leading-tight font-extrabold">{data.profile.name}</h1>
 			<span class="text-[0.95rem] text-[#6b7280]">@{data.profile.handle}</span>
 
-			<p class="my-3 text-[0.9375rem] leading-[1.6] text-[#e5e7eb]">
+			<p class="my-3 text-[0.9375rem] leading-[1.6] break-words whitespace-pre-wrap text-[#e5e7eb]">
 				{data.profile.bio}
 			</p>
 
@@ -348,180 +333,18 @@
 			class="fixed inset-0 z-50 flex items-center justify-center bg-[#0d0d0d]/80 px-4 backdrop-blur-sm"
 		>
 			<div class="w-full max-w-150 overflow-hidden rounded-2xl bg-[#161616] shadow-2xl">
-				<form
-					method="POST"
+				<EditProfileForm
 					action="?/updateProfile"
-					enctype="multipart/form-data"
-					use:enhance={() => {
-						is_saving_profile = true
-						form_error = ''
-						return async ({ result, update }) => {
-							is_saving_profile = false
-							if (result.type === 'success') {
-								is_edit_modal_open = false
-								avatar_preview = ''
-								banner_preview = ''
-							} else if (result.type === 'failure') {
-								form_error =
-									result.data &&
-									typeof result.data === 'object' &&
-									'message' in result.data &&
-									typeof result.data.message === 'string'
-										? result.data.message
-										: 'Failed to save profile'
-							}
-							await update()
-						}
+					can_close
+					profile={{
+						name: data.profile.name,
+						username: data.profile.handle ?? '',
+						bio: data.profile.bio === 'This user has no bio yet.' ? '' : data.profile.bio,
+						banner_url: data.profile.banner_url,
+						avatar_url: data.profile.avatar_url
 					}}
-				>
-					<div class="flex items-center justify-between border-b border-[#333] px-4 py-3">
-						<div class="flex items-center gap-6">
-							<button
-								type="button"
-								aria-label="Close edit profile modal"
-								class="cursor-pointer text-gray-400 transition-colors hover:text-white"
-								onclick={() => {
-									is_edit_modal_open = false
-									avatar_preview = ''
-									banner_preview = ''
-									form_error = ''
-								}}
-							>
-								<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M6 18L18 6M6 6l12 12"
-									/>
-								</svg>
-							</button>
-							<h2 class="text-lg font-bold text-[#f3f4f6]">Edit Profile</h2>
-						</div>
-						<button
-							type="submit"
-							disabled={is_saving_profile}
-							class="cursor-pointer rounded-full bg-linear-to-r from-[#ff3377] to-[#ff5588] px-5 py-1.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-						>
-							{is_saving_profile ? 'SAVING...' : 'SAVE'}
-						</button>
-					</div>
-
-					{#if form_error}
-						<div class="bg-red-500/10 px-4 py-2 text-center text-sm font-medium text-red-500">
-							{form_error}
-						</div>
-					{/if}
-
-					<div class="max-h-[80vh] overflow-y-auto pb-8">
-						<div class="group relative h-48 w-full bg-[#222]">
-							<img
-								src={banner_preview || data.profile.banner_url}
-								alt="Banner"
-								class="h-full w-full object-cover opacity-70 transition-opacity group-hover:opacity-50"
-							/>
-
-							<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-								<div class="rounded-full bg-black/60 p-3 text-white backdrop-blur-md">
-									<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-										/>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-										/>
-									</svg>
-								</div>
-							</div>
-							<input
-								type="file"
-								name="banner"
-								accept=".jpg,.jpeg,.png,.gif,.webp"
-								class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-								onchange={(e) => handle_file_preview(e, 'banner')}
-							/>
-						</div>
-
-						<div class="relative px-4">
-							<div
-								class="group relative -mt-16 inline-block h-32 w-32 rounded-full border-4 border-[#161616] bg-[#222]"
-							>
-								<img
-									src={avatar_preview || data.profile.avatar_url}
-									alt="Avatar"
-									class="h-full w-full rounded-full object-cover opacity-70 transition-opacity group-hover:opacity-50"
-								/>
-
-								<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-									<div class="rounded-full bg-black/60 p-2 text-white backdrop-blur-md">
-										<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-											/>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-											/>
-										</svg>
-									</div>
-								</div>
-								<input
-									type="file"
-									name="avatar"
-									accept=".jpg,.jpeg,.png,.gif,.webp"
-									class="absolute inset-0 h-full w-full cursor-pointer rounded-full opacity-0"
-									onchange={(e) => handle_file_preview(e, 'avatar')}
-								/>
-							</div>
-						</div>
-
-						<div class="mt-4 space-y-5 px-4">
-							<div class="flex flex-col">
-								<label
-									for="name"
-									class="mb-1 text-[0.7rem] font-bold tracking-wider text-[#6b7280] uppercase"
-								>
-									Displayed Name
-								</label>
-								<input
-									id="name"
-									name="name"
-									type="text"
-									value={data.profile.name}
-									class="rounded-lg border border-[#333] bg-[#0a0a0a] px-3 py-3 text-[0.95rem] text-[#f3f4f6] focus:border-[#ff3377] focus:ring-1 focus:ring-[#ff3377] focus:outline-none"
-									required
-								/>
-							</div>
-
-							<div class="flex flex-col">
-								<label
-									for="bio"
-									class="mb-1 text-[0.7rem] font-bold tracking-wider text-[#6b7280] uppercase"
-								>
-									Bio
-								</label>
-								<textarea
-									id="bio"
-									name="bio"
-									rows="3"
-									class="resize-none rounded-lg border border-[#333] bg-[#0a0a0a] px-3 py-3 text-[0.95rem] text-[#f3f4f6] focus:border-[#ff3377] focus:ring-1 focus:ring-[#ff3377] focus:outline-none"
-									value={data.profile.bio === 'This user has no bio yet.' ? '' : data.profile.bio}
-								></textarea>
-							</div>
-						</div>
-					</div>
-				</form>
+					on_close={() => (is_edit_modal_open = false)}
+				/>
 			</div>
 		</div>
 	{/if}

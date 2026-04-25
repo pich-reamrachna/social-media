@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => {
 
 	return {
 		sign_up_email: vi.fn(),
+		send_email: vi.fn().mockResolvedValue(undefined),
+		resolve_mx: vi.fn().mockResolvedValue([{ exchange: 'mail.example.com', priority: 10 }]),
 		peek_rate_limit: vi.fn(),
 		consume_rate_limit: vi.fn(),
 		get_rate_limit_error: vi.fn((retry_after_seconds: number, message = 'Too many requests.') => ({
@@ -28,6 +30,18 @@ vi.mock('$lib/server/rate-limit', () => ({
 	get_rate_limit_error: mocks.get_rate_limit_error
 }))
 
+vi.mock('$lib/server/email', () => ({
+	send_email: mocks.send_email
+}))
+
+vi.mock('node:dns/promises', () => ({
+	resolveMx: mocks.resolve_mx
+}))
+
+vi.mock('$env/dynamic/private', () => ({
+	env: { ORIGIN: 'http://localhost' }
+}))
+
 vi.mock('better-auth/api', () => ({
 	APIError: mocks.APIError
 }))
@@ -37,6 +51,7 @@ describe('register actions', () => {
 		vi.resetModules()
 		vi.clearAllMocks()
 
+		mocks.resolve_mx.mockResolvedValue([{ exchange: 'mail.example.com', priority: 10 }])
 		mocks.peek_rate_limit.mockResolvedValue({
 			ok: true,
 			remaining: 3,
@@ -73,12 +88,61 @@ describe('register actions', () => {
 		}
 	}
 
+	it('rejects email with no MX records', async () => {
+		mocks.resolve_mx.mockResolvedValue([])
+
+		const { actions } = await import('./+page.server')
+		const default_action = actions.default!
+		const result = await default_action(
+			create_event({
+				email: 'new@fakeinvaliddomain99999.xyz',
+				password: 'ValidPassword1!',
+				confirm_password: 'ValidPassword1!'
+			}) as never
+		)
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: {
+				message: 'Email address appears to be invalid. Please check the domain.',
+				email: 'new@fakeinvaliddomain99999.xyz'
+			}
+		})
+		expect(mocks.sign_up_email).not.toHaveBeenCalled()
+	})
+
+	it('keeps submitted fields when registration failures hit the rate limit', async () => {
+		mocks.consume_rate_limit.mockResolvedValue({
+			ok: false,
+			remaining: 0,
+			reset_at: 0,
+			retryAfterSeconds: 45
+		})
+
+		const { actions } = await import('./+page.server')
+		const default_action = actions.default!
+		const result = await default_action(
+			create_event({
+				email: 'new@example.com',
+				password: 'weak',
+				confirm_password: 'weak'
+			}) as never
+		)
+
+		expect(result).toMatchObject({
+			status: 429,
+			data: {
+				message: 'Too many registration attempts. Try again in 45 seconds.',
+				email: 'new@example.com'
+			}
+		})
+	})
+
 	it('keeps password mismatch errors specific', async () => {
 		const { actions } = await import('./+page.server')
 		const default_action = actions.default!
 		const result = await default_action(
 			create_event({
-				username: 'new-user',
 				email: 'new@example.com',
 				password: 'ValidPassword1!',
 				confirm_password: 'DifferentPassword1!'
@@ -89,83 +153,30 @@ describe('register actions', () => {
 			status: 400,
 			data: {
 				message: 'Passwords do not match',
-				username: 'new-user',
 				email: 'new@example.com'
 			}
 		})
 		expect(mocks.sign_up_email).not.toHaveBeenCalled()
 	})
 
-	it('returns a specific message when sign up fails on duplicate username only', async () => {
-		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Username already exists'))
-
-		const { actions } = await import('./+page.server')
-		const default_action = actions.default!
-		const result = await default_action(
-			create_event({
-				username: 'existing-user',
-				email: 'existing@example.com',
-				password: 'ValidPassword1!',
-				confirm_password: 'ValidPassword1!'
-			}) as never
-		)
-
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				message: 'Username already taken',
-				username: 'existing-user',
-				email: 'existing@example.com'
-			}
-		})
-	})
-
-	it('returns a generic message when sign up fails on duplicate email', async () => {
+	it('redirects silently and sends account-exists email on duplicate email', async () => {
 		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Email already exists'))
 
 		const { actions } = await import('./+page.server')
 		const default_action = actions.default!
-		const result = await default_action(
-			create_event({
-				username: 'new-user',
-				email: 'existing@example.com',
-				password: 'ValidPassword1!',
-				confirm_password: 'ValidPassword1!'
-			}) as never
+		await expect(
+			default_action(
+				create_event({
+					email: 'existing@example.com',
+					password: 'ValidPassword1!',
+					confirm_password: 'ValidPassword1!'
+				}) as never
+			)
+		).rejects.toMatchObject({ status: 302, location: '/login?verification=sent' })
+
+		expect(mocks.send_email).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'existing@example.com' })
 		)
-
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				message: 'Account already exists',
-				username: 'new-user',
-				email: 'existing@example.com'
-			}
-		})
-	})
-
-	it('returns a generic message when sign up fails on duplicate username and email', async () => {
-		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Username and email already exist'))
-
-		const { actions } = await import('./+page.server')
-		const default_action = actions.default!
-		const result = await default_action(
-			create_event({
-				username: 'existing-user',
-				email: 'existing@example.com',
-				password: 'ValidPassword1!',
-				confirm_password: 'ValidPassword1!'
-			}) as never
-		)
-
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				message: 'Account already exists',
-				username: 'existing-user',
-				email: 'existing@example.com'
-			}
-		})
 	})
 
 	it('redirects to login when sign up succeeds', async () => {
@@ -176,7 +187,6 @@ describe('register actions', () => {
 		await expect(
 			default_action(
 				create_event({
-					username: 'new-user',
 					email: 'new@example.com',
 					password: 'ValidPassword1!',
 					confirm_password: 'ValidPassword1!'
@@ -190,8 +200,7 @@ describe('register actions', () => {
 			body: {
 				email: 'new@example.com',
 				password: 'ValidPassword1!',
-				name: 'new-user',
-				username: 'new-user'
+				name: 'new'
 			}
 		})
 	})

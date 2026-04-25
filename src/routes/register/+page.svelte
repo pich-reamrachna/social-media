@@ -1,32 +1,26 @@
 <script lang="ts">
+	import { enhance } from '$app/forms'
 	import { resolve } from '$app/paths'
 	import type { ActionData } from './$types'
-	import {
-		MIN_USERNAME_LENGTH,
-		MAX_USERNAME_LENGTH,
-		MIN_PASSWORD_LENGTH
-	} from '$lib/constants/auth'
+	import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
-	let email = $state('')
-	let username = $state('')
+	const { form } = $props<{ form: ActionData }>()
+
+	let email = $derived.by(() => form?.email ?? '')
 	let password = $state('')
 	let confirm_password = $state('')
 
 	let is_show_password = $state(false)
+	let is_signing_up = $state(false)
 
 	let email_status = $state<'idle' | 'invalid' | 'valid'>('idle')
 	let email_message = $state('')
-
-	let username_status = $state<'idle' | 'error' | 'valid'>('idle')
-	let username_message = $state('')
 
 	let password_status = $state<'idle' | 'invalid' | 'valid'>('idle')
 	let password_message = $state('')
 
 	let confirm_password_status = $state<'idle' | 'invalid' | 'valid'>('idle')
 	let confirm_password_message = $state('')
-
-	const { form } = $props<{ form: ActionData }>()
 
 	const check_email = (value: string) => {
 		const trimmed = value.trim()
@@ -45,35 +39,6 @@
 
 		email_status = 'valid'
 		email_message = ''
-	}
-
-	const check_username = (value: string) => {
-		const trimmed = value.trim()
-
-		if (!trimmed) {
-			username_status = 'idle'
-			username_message = ''
-			return
-		}
-
-		if (!/^[a-z0-9._]+$/.test(trimmed)) {
-			username_status = 'error'
-			username_message = 'Username allows only lowercase letters, numbers, dots, and underscores'
-			return
-		}
-
-		if (trimmed.length < MIN_USERNAME_LENGTH) {
-			username_status = 'error'
-			username_message = 'Username must be at least 3 characters'
-			return
-		} else if (trimmed.length > MAX_USERNAME_LENGTH) {
-			username_status = 'error'
-			username_message = 'Username must be less than 20 characters'
-			return
-		}
-
-		username_status = 'valid'
-		username_message = ''
 	}
 
 	const validate_password = (value: string) => {
@@ -116,6 +81,13 @@
 		password_status = 'valid'
 		password_message = 'Valid Password'
 	}
+
+	// eslint-disable-next-line prefer-const
+	let has_errors = $derived(
+		email_status === 'invalid' ||
+			password_status === 'invalid' ||
+			confirm_password_status === 'invalid'
+	)
 
 	const toggle_password = () => {
 		is_show_password = !is_show_password
@@ -209,7 +181,20 @@
 				</p>
 			</div>
 
-			<form method="POST" class="space-y-5 sm:space-y-6">
+			<form
+				method="POST"
+				class="space-y-5 sm:space-y-6"
+				use:enhance={() => {
+					is_signing_up = true
+					return async ({ update }) => {
+						try {
+							await update()
+						} finally {
+							is_signing_up = false
+						}
+					}
+				}}
+			>
 				{#if form?.message}
 					<p
 						class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
@@ -238,34 +223,6 @@
 					{#if email_message}
 						<p class:text-red-400={email_status === 'invalid'} class="mt-2 text-sm break-words">
 							{email_message}
-						</p>
-					{/if}
-				</div>
-
-				<div>
-					<label
-						for="username"
-						class="mb-3 block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
-					>
-						Username
-					</label>
-					<input
-						type="text"
-						id="username"
-						name="username"
-						bind:value={username}
-						oninput={(e) => check_username((e.currentTarget as HTMLInputElement).value)}
-						placeholder="Choose a username"
-						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
-						required
-					/>
-					{#if username_message}
-						<p
-							class:text-green-400={username_status === 'valid'}
-							class:text-red-400={username_status === 'error'}
-							class="mt-2 text-sm break-words"
-						>
-							{username_message}
 						</p>
 					{/if}
 				</div>
@@ -373,9 +330,10 @@
 				<div class="pt-6">
 					<button
 						type="submit"
-						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99]"
+						disabled={has_errors || is_signing_up}
+						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
 					>
-						Create Account
+						{is_signing_up ? 'Creating Account...' : 'Create Account'}
 					</button>
 				</div>
 			</form>

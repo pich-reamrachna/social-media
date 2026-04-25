@@ -1,11 +1,11 @@
-import { betterAuth } from 'better-auth/minimal'
+import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { username } from 'better-auth/plugins'
 import { env } from '$env/dynamic/private'
 import { getRequestEvent } from '$app/server'
 import { db } from '$lib/server/db'
-import { MIN_USERNAME_LENGTH, MAX_USERNAME_LENGTH } from '$lib/constants/auth'
+import { MAX_USERNAME_LENGTH, MIN_USERNAME_LENGTH, VALID_USERNAME_REGEX } from '$lib/constants/auth'
 import { send_email } from '$lib/server/email'
 
 const plugins = [
@@ -13,7 +13,7 @@ const plugins = [
 		minUsernameLength: MIN_USERNAME_LENGTH,
 		maxUsernameLength: MAX_USERNAME_LENGTH,
 		usernameNormalization: (username) => username.toLowerCase(),
-		usernameValidator: (username) => /^[a-z0-9._]+$/.test(username)
+		usernameValidator: (username) => VALID_USERNAME_REGEX.test(username)
 	}),
 	sveltekitCookies(getRequestEvent)
 ]
@@ -55,7 +55,28 @@ export const auth = betterAuth({
 	database: drizzleAdapter(db, { provider: 'pg' }),
 	emailAndPassword: {
 		enabled: true,
-		requireEmailVerification: true
+		requireEmailVerification: true,
+		sendPasswordResetToken: async ({ user, url }: { user: { email: string }; url: string }) => {
+			console.info('[auth] sendPasswordResetToken: recipient=%s', user.email)
+
+			send_email({
+				to: user.email,
+				subject: 'Reset your Y password',
+				text: `Reset your Y password by opening this link: ${url}`,
+				html: `
+					<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+						<h1 style="margin-bottom: 16px;">Reset your password</h1>
+						<p style="margin-bottom: 16px;">
+							Click the link below to reset your Y password.
+						</p>
+						<p style="margin-bottom: 24px;">
+							<a href="${url}" style="color: #db2777;">Reset password</a>
+						</p>
+						<p>If you did not request a password reset, you can ignore this email.</p>
+					</div>
+				`
+			}).catch((e) => console.error('[auth] sendPasswordResetToken failed:', e))
+		}
 	},
 	emailVerification: {
 		sendOnSignUp: true,
