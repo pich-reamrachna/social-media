@@ -40,13 +40,17 @@ const load_profile_user = async (target_username: string) => {
 const get_uploaded_profile_images = async (avatar_file: File | null, banner_file: File | null) => {
 	const uploaded: Pick<Partial<typeof userTable.$inferSelect>, 'image' | 'banner'> = {}
 
-	if (avatar_file instanceof File && avatar_file.size > 0) {
-		uploaded.image = await upload_cloudinary(avatar_file, 'avatars')
-	}
+	const [avatar_url, banner_url] = await Promise.all([
+		avatar_file instanceof File && avatar_file.size > 0
+			? upload_cloudinary(avatar_file, 'avatars')
+			: undefined,
+		banner_file instanceof File && banner_file.size > 0
+			? upload_cloudinary(banner_file, 'banners')
+			: undefined
+	])
 
-	if (banner_file instanceof File && banner_file.size > 0) {
-		uploaded.banner = await upload_cloudinary(banner_file, 'banners')
-	}
+	if (avatar_url) uploaded.image = avatar_url
+	if (banner_url) uploaded.banner = banner_url
 
 	return uploaded
 }
