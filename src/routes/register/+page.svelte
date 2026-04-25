@@ -5,11 +5,12 @@
 
 	const { form } = $props<{ form: ActionData }>()
 
-	let email = $state(form?.email ?? '')
+	let email = $derived.by(() => form?.email ?? '')
 	let password = $state('')
 	let confirm_password = $state('')
 
 	let is_show_password = $state(false)
+	let is_signing_up = $state(false)
 
 	let email_status = $state<'idle' | 'invalid' | 'valid'>('idle')
 	let email_message = $state('')
@@ -179,7 +180,13 @@
 				</p>
 			</div>
 
-			<form method="POST" class="space-y-5 sm:space-y-6">
+			<form
+				method="POST"
+				class="space-y-5 sm:space-y-6"
+				onsubmit={() => {
+					is_signing_up = true
+				}}
+			>
 				{#if form?.message}
 					<p
 						class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
@@ -315,10 +322,10 @@
 				<div class="pt-6">
 					<button
 						type="submit"
-						disabled={has_errors}
+						disabled={has_errors || is_signing_up}
 						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
 					>
-						Create Account
+						{is_signing_up ? 'Creating Account...' : 'Create Account'}
 					</button>
 				</div>
 			</form>

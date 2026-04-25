@@ -6,6 +6,7 @@
 	let password = $state('')
 	let should_remember_me = $state(false)
 	let is_show_password = $state(false)
+	let is_signing_in = $state(false)
 
 	const { form, data } = $props<{ form: ActionData; data: PageData }>()
 
@@ -14,7 +15,6 @@
 		should_remember_me = form?.should_remember_me ?? false
 	})
 
-	// toggle show password
 	const toggle_password = () => {
 		is_show_password = !is_show_password
 	}
@@ -88,7 +88,13 @@
 				</p>
 			</div>
 
-			<form method="POST" class="space-y-5 sm:space-y-6">
+			<form
+				method="POST"
+				class="space-y-5 sm:space-y-6"
+				onsubmit={() => {
+					is_signing_in = true
+				}}
+			>
 				{#if data.verification_sent}
 					<p
 						class="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
@@ -235,9 +241,10 @@
 				<div class="pt-3 sm:pt-4">
 					<button
 						type="submit"
-						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] sm:py-4"
+						disabled={is_signing_in}
+						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none sm:py-4"
 					>
-						Sign In
+						{is_signing_in ? 'Signing in...' : 'Sign In'}
 					</button>
 				</div>
 			</form>
