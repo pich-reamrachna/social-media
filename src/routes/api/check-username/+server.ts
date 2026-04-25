@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db'
 import { user } from '$lib/server/db/auth.schema'
+import { validate_username } from '$lib/constants/auth'
 import { eq } from 'drizzle-orm'
 import { json } from '@sveltejs/kit'
 import {
@@ -17,6 +18,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 	if (!username) {
 		return json({ available: false })
+	}
+
+	const username_validation = validate_username(username)
+	if (!username_validation.ok) {
+		return json({ available: false, message: username_validation.message }, { status: 400 })
 	}
 
 	const rate_key = `check-username:${get_rate_limit_subject(locals)}`

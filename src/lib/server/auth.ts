@@ -5,7 +5,7 @@ import { username } from 'better-auth/plugins'
 import { env } from '$env/dynamic/private'
 import { getRequestEvent } from '$app/server'
 import { db } from '$lib/server/db'
-import { MIN_USERNAME_LENGTH, MAX_USERNAME_LENGTH } from '$lib/constants/auth'
+import { MAX_USERNAME_LENGTH, MIN_USERNAME_LENGTH, VALID_USERNAME_REGEX } from '$lib/constants/auth'
 import { send_email } from '$lib/server/email'
 
 const plugins = [
@@ -13,7 +13,7 @@ const plugins = [
 		minUsernameLength: MIN_USERNAME_LENGTH,
 		maxUsernameLength: MAX_USERNAME_LENGTH,
 		usernameNormalization: (username) => username.toLowerCase(),
-		usernameValidator: (username) => /^[a-z0-9._]+$/.test(username)
+		usernameValidator: (username) => VALID_USERNAME_REGEX.test(username)
 	}),
 	sveltekitCookies(getRequestEvent)
 ]
@@ -57,53 +57,25 @@ export const auth = betterAuth({
 		enabled: true,
 		requireEmailVerification: true,
 		sendPasswordResetToken: async ({ user, url }: { user: { email: string }; url: string }) => {
-			const is_account_exists_flow = url.includes('account-exists')
-			console.info(
-				'[auth] sendPasswordResetToken: flow=%s recipient=%s',
-				is_account_exists_flow ? 'account-exists' : 'password-reset',
-				user.email
-			)
+			console.info('[auth] sendPasswordResetToken: recipient=%s', user.email)
 
-			if (is_account_exists_flow) {
-				send_email({
-					to: user.email,
-					subject: 'Your Y account already exists',
-					text: `You tried to create an account on Y, but this email is already registered. Reset your password to sign in: ${url}`,
-					html: `
-						<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-							<h1 style="margin-bottom: 16px;">Account already exists</h1>
-							<p style="margin-bottom: 16px;">
-								Someone tried to create a Y account using this email, but you already have one.
-							</p>
-							<p style="margin-bottom: 16px;">
-								If this was you, click below to reset your password and sign in:
-							</p>
-							<p style="margin-bottom: 24px;">
-								<a href="${url}" style="color: #db2777;">Reset password</a>
-							</p>
-							<p>If this wasn't you, you can safely ignore this email.</p>
-						</div>
-					`
-				}).catch((e) => console.error('[auth] sendPasswordResetToken (account-exists) failed:', e))
-			} else {
-				send_email({
-					to: user.email,
-					subject: 'Reset your Y password',
-					text: `Reset your Y password by opening this link: ${url}`,
-					html: `
-						<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-							<h1 style="margin-bottom: 16px;">Reset your password</h1>
-							<p style="margin-bottom: 16px;">
-								Click the link below to reset your Y password.
-							</p>
-							<p style="margin-bottom: 24px;">
-								<a href="${url}" style="color: #db2777;">Reset password</a>
-							</p>
-							<p>If you did not request a password reset, you can ignore this email.</p>
-						</div>
-					`
-				}).catch((e) => console.error('[auth] sendPasswordResetToken failed:', e))
-			}
+			send_email({
+				to: user.email,
+				subject: 'Reset your Y password',
+				text: `Reset your Y password by opening this link: ${url}`,
+				html: `
+					<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+						<h1 style="margin-bottom: 16px;">Reset your password</h1>
+						<p style="margin-bottom: 16px;">
+							Click the link below to reset your Y password.
+						</p>
+						<p style="margin-bottom: 24px;">
+							<a href="${url}" style="color: #db2777;">Reset password</a>
+						</p>
+						<p>If you did not request a password reset, you can ignore this email.</p>
+					</div>
+				`
+			}).catch((e) => console.error('[auth] sendPasswordResetToken failed:', e))
 		}
 	},
 	emailVerification: {

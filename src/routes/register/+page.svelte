@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms'
 	import { resolve } from '$app/paths'
 	import type { ActionData } from './$types'
 	import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
@@ -183,8 +184,15 @@
 			<form
 				method="POST"
 				class="space-y-5 sm:space-y-6"
-				onsubmit={() => {
+				use:enhance={() => {
 					is_signing_up = true
+					return async ({ update }) => {
+						try {
+							await update()
+						} finally {
+							is_signing_up = false
+						}
+					}
 				}}
 			>
 				{#if form?.message}

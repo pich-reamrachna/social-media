@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms'
 	import { goto } from '$app/navigation'
-	import { MAX_USERNAME_LENGTH, MIN_USERNAME_LENGTH } from '$lib/constants/auth'
+	import { validate_username } from '$lib/constants/auth'
 
 	type ProfileFormProfile = {
 		name: string
@@ -86,21 +86,10 @@
 			return
 		}
 
-		if (!/^[a-z0-9._]+$/.test(trimmed)) {
+		const validation = validate_username(trimmed)
+		if (!validation.ok) {
 			username_status = 'error'
-			username_message = 'Use lowercase letters, numbers, dots, or underscores'
-			return
-		}
-
-		if (trimmed.length < MIN_USERNAME_LENGTH) {
-			username_status = 'error'
-			username_message = `Username must be at least ${MIN_USERNAME_LENGTH} characters`
-			return
-		}
-
-		if (trimmed.length > MAX_USERNAME_LENGTH) {
-			username_status = 'error'
-			username_message = `Username must be less than ${MAX_USERNAME_LENGTH} characters`
+			username_message = validation.message
 			return
 		}
 

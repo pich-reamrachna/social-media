@@ -1,31 +1,14 @@
 import { db } from '$lib/server/db'
 import { user } from '$lib/server/db/auth.schema'
-import { MAX_USERNAME_LENGTH, MIN_USERNAME_LENGTH } from '$lib/constants/auth'
+import { validate_username } from '$lib/constants/auth'
 import { upload_cloudinary } from '$lib/server/cloudinary'
 import { eq } from 'drizzle-orm'
 import { fail, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types'
 
-const USERNAME_PATTERN = /^[a-z0-9._]+$/
-
 const get_string = (form_data: FormData, key: string) => {
 	const value = form_data.get(key)
 	return typeof value === 'string' ? value.trim() : ''
-}
-
-const validate_username = (username: string) => {
-	if (!username) return 'Username is required'
-	if (!USERNAME_PATTERN.test(username)) {
-		return 'Username allows only lowercase letters, numbers, dots, and underscores'
-	}
-	if (username.length < MIN_USERNAME_LENGTH) {
-		return `Username must be at least ${MIN_USERNAME_LENGTH} characters`
-	}
-	if (username.length > MAX_USERNAME_LENGTH) {
-		return `Username must be less than ${MAX_USERNAME_LENGTH} characters`
-	}
-
-	return undefined
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -67,9 +50,9 @@ export const actions: Actions = {
 			})
 		}
 
-		const username_error = validate_username(username)
-		if (username_error) {
-			return fail(400, { message: username_error, ...submitted_values })
+		const username_validation = validate_username(username)
+		if (!username_validation.ok) {
+			return fail(400, { message: username_validation.message, ...submitted_values })
 		}
 
 		const existing_user = await db.query.user.findFirst({

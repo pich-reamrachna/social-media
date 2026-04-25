@@ -11,13 +11,12 @@ import { dev } from '$app/environment'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { upload_cloudinary } from '$lib/server/cloudinary'
-import { MAX_USERNAME_LENGTH, MIN_USERNAME_LENGTH } from '$lib/constants/auth'
+import { validate_username } from '$lib/constants/auth'
 import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_POSTS_LIMIT = 20
 const PROFILE_LIKED_POSTS_LIMIT = 20
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
-const USERNAME_PATTERN = /^[a-z0-9._]+$/
 
 // --- PROFILE LOADING LOGIC ---
 const log_dev_duration = (label: string, started_at: number) => {
@@ -33,21 +32,6 @@ const load_profile_user = async (target_username: string) => {
 	})
 	log_dev_duration('[profile.load] profile user query took', started_at)
 	return profile_user
-}
-
-const validate_username = (username: string) => {
-	if (!username) return 'Username is required'
-	if (!USERNAME_PATTERN.test(username)) {
-		return 'Username allows only lowercase letters, numbers, dots, and underscores'
-	}
-	if (username.length < MIN_USERNAME_LENGTH) {
-		return `Username must be at least ${MIN_USERNAME_LENGTH} characters`
-	}
-	if (username.length > MAX_USERNAME_LENGTH) {
-		return `Username must be less than ${MAX_USERNAME_LENGTH} characters`
-	}
-
-	return undefined
 }
 
 const load_profile_posts = async (user_id: string) => {
@@ -290,9 +274,9 @@ export const actions: Actions = {
 			return fail(400, { message: 'Name must be under 50 characters' })
 		}
 
-		const username_error = validate_username(next_username)
-		if (username_error) {
-			return fail(400, { message: username_error })
+		const username_validation = validate_username(next_username)
+		if (!username_validation.ok) {
+			return fail(400, { message: username_validation.message })
 		}
 
 		const existing_user = await db.query.user.findFirst({
