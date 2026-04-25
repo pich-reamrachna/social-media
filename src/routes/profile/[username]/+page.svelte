@@ -295,6 +295,12 @@
 		/>
 	{/if}
 
+	<section class="mobile-prelude" aria-label="Top feed section">
+		<div class="mobile-header">
+			<span class="mobile-logo">Y</span>
+		</div>
+	</section>
+
 	<main class="feed-column">
 		<header
 			class="sticky top-0 z-20 flex items-center justify-between border-b border-[#1f1f1f] bg-[#0d0d0d]/98 px-4 backdrop-blur-md"
@@ -438,7 +444,7 @@
 			{/each}
 		</nav>
 
-		<div class="pb-12">
+		<div>
 			{#if active_tab === 'liked posts' && is_liked_posts_loading}
 				{#each [0, 1, 2] as i (i)}
 					<div class="skeleton-post">

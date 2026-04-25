@@ -25,7 +25,7 @@
 		{
 			label: 'Profile',
 			path: `/profile/${current_user?.handle || ''}`,
-			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
+			icon: 'M5.121 17.804A9 9 0 0112 15a9 9 0 016.879 2.804M15 11a3 3 0 11-6 0 3 3 0 016 0z'
 		}
 	])
 
@@ -41,7 +41,7 @@
 		{
 			label: 'Profile',
 			path: `/profile/${current_user?.handle || ''}`,
-			icon: 'M16 14a4 4 0 10-8 0 6 6 0 00-4 5.2V20h16v-.8A6 6 0 0016 14z'
+			icon: `${current_user?.avatar_url}`
 		}
 	])
 </script>
@@ -189,16 +189,8 @@
 			class="mobile-nav-item"
 			class:active={active_route === resolve(item.path as '/')}
 		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="mobile-nav-icon"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				stroke-width="1.9"
-			>
-				<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
-			</svg>
+			<img src={item.icon} alt={item.label} class="mobile-nav-icon-avatar" />
+
 			<span>{item.label}</span>
 		</a>
 	{/each}
