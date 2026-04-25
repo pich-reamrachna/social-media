@@ -196,8 +196,6 @@ const map_home_post = (
 	timestamp: p.createdAt,
 	is_liked_by_user: liked_post_ids.has(p.id),
 	stats: {
-		comments: 0,
-		echo_count: p.shareCount,
 		likes: p.likeCount
 	}
 })

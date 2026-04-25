@@ -11,8 +11,6 @@ export type ProfilePost = {
 	timestamp: Date
 	is_liked_by_user: boolean
 	stats: {
-		comments: number
-		echo_count: number
 		likes: number
 	}
 }

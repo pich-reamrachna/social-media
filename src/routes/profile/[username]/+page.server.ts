@@ -133,8 +133,6 @@ const map_post_for_frontend = (
 	timestamp: post_row.createdAt,
 	is_liked_by_user: liked_post_ids.has(post_row.id),
 	stats: {
-		comments: 0,
-		echo_count: post_row.shareCount,
 		likes: post_row.likeCount
 	}
 })
