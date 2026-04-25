@@ -119,20 +119,25 @@
 	}
 
 	async function toggle_follow(user_id: string) {
-		const form_data = new FormData()
-		form_data.append('userId', user_id)
+		try {
+			const form_data = new FormData()
+			form_data.append('userId', user_id)
 
-		const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
-		const result = deserialize(await response.text())
+			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
+			const result = deserialize(await response.text())
 
-		if (result.type !== 'success') {
-			show_toast('error', 'Failed to update follow')
-			throw new Error('Follow failed')
-		}
+			if (result.type !== 'success') {
+				throw new Error('Failed to update follow')
+			}
 
-		const payload = result.data as { is_following?: boolean }
-		if (typeof payload.is_following === 'boolean') {
-			if (!current_user) return
+			const payload = result.data as { is_following?: boolean }
+			if (typeof payload.is_following !== 'boolean') {
+				throw new Error('Failed to update follow')
+			}
+
+			if (!current_user) {
+				throw new Error('Failed to update follow')
+			}
 			const current_user_snapshot = current_user
 			current_user = {
 				...current_user_snapshot,
@@ -144,8 +149,15 @@
 					)
 				}
 			}
+			show_toast('success', payload.is_following ? 'Followed!' : 'Unfollowed')
+			return true
+		} catch (error) {
+			show_toast(
+				'error',
+				error instanceof Error && error.message ? error.message : 'Failed to update follow'
+			)
+			return false
 		}
-		show_toast('success', payload.is_following ? 'Followed!' : 'Unfollowed')
 	}
 
 	function filter_posts() {

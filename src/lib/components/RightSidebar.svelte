@@ -24,7 +24,7 @@
 		on_search_change?: (value: string) => void
 		on_open_profile?: (handle: string) => void
 		on_apply_keyword_search?: () => void
-		on_toggle_follow?: (user_id: string) => Promise<void>
+		on_toggle_follow?: (user_id: string) => Promise<boolean>
 		is_footer_visible?: boolean
 	}>()
 
@@ -58,7 +58,8 @@
 		if (follow_pending[user_id] || recently_followed.has(user_id)) return
 		follow_pending[user_id] = true
 		try {
-			await on_toggle_follow?.(user_id)
+			const did_toggle = await on_toggle_follow?.(user_id)
+			if (!did_toggle) return
 			recently_followed.add(user_id)
 			setTimeout(() => {
 				recently_followed.delete(user_id)

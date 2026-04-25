@@ -237,20 +237,30 @@
 	}
 
 	async function sidebar_toggle_follow(user_id: string) {
-		const form_data = new FormData()
-		form_data.append('userId', user_id)
-		const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
-		const result = deserialize(await response.text())
-		if (result.type !== 'success') {
-			show_toast('error', 'Failed to update follow')
-			throw new Error('Follow failed')
-		}
-		const payload = result.data as { is_following?: boolean }
-		if (typeof payload.is_following === 'boolean') {
+		try {
+			const form_data = new FormData()
+			form_data.append('userId', user_id)
+			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
+			const result = deserialize(await response.text())
+			if (result.type !== 'success') {
+				throw new Error('Failed to update follow')
+			}
+			const payload = result.data as { is_following?: boolean }
+			if (typeof payload.is_following !== 'boolean') {
+				throw new Error('Failed to update follow')
+			}
+
 			const is_following_payload = payload.is_following
 			update_current_user_following(is_following_payload ? 1 : -1)
 			sync_viewed_profile_follow_state(user_id, is_following_payload)
 			show_toast('success', is_following_payload ? 'Followed!' : 'Unfollowed')
+			return true
+		} catch (error) {
+			show_toast(
+				'error',
+				error instanceof Error && error.message ? error.message : 'Failed to update follow'
+			)
+			return false
 		}
 	}
 
