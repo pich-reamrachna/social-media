@@ -104,6 +104,12 @@
 			return
 		}
 
+		if (trimmed === profile.username.trim().toLowerCase()) {
+			username_status = 'idle'
+			username_message = ''
+			return
+		}
+
 		username_status = 'checking'
 		username_message = 'Checking availability...'
 
@@ -142,12 +148,12 @@
 			if (result.type === 'success') {
 				const payload = result.data as { profile_url?: string } | undefined
 				reset_previews()
+				on_close?.()
 				if (payload?.profile_url) {
 					// eslint-disable-next-line svelte/no-navigation-without-resolve
-					await goto(payload.profile_url)
+					await goto(payload.profile_url, { invalidateAll: true })
 					return
 				}
-				on_close?.()
 			} else if (result.type === 'failure') {
 				form_error =
 					result.data &&
@@ -161,45 +167,40 @@
 		}
 	}}
 >
-	<div class="flex items-center justify-between border-b border-[#333] px-4 py-3">
+	<div class="flex items-center justify-between border-b border-[#333] px-3 py-3 sm:px-4">
 		<div class="flex items-center gap-6">
-			{#if can_close}
-				<button
-					type="button"
-					aria-label="Close edit profile modal"
-					class="cursor-pointer text-gray-400 transition-colors hover:text-white"
-					onclick={() => {
-						reset_previews()
-						form_error = ''
-						on_close?.()
-					}}
-				>
-					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						/>
-					</svg>
-				</button>
-			{/if}
 			<div>
 				{#if eyebrow}
 					<p class="text-[0.68rem] font-bold tracking-[0.24em] text-[#ff5c8d] uppercase">
 						{eyebrow}
 					</p>
 				{/if}
-				<h2 class="text-lg font-bold text-[#f3f4f6]">{title}</h2>
+				<h2 class="text-base font-bold text-[#f3f4f6] sm:text-lg">{title}</h2>
 			</div>
 		</div>
-		<button
-			type="submit"
-			disabled={is_saving_profile || has_errors}
-			class="cursor-pointer rounded-full bg-linear-to-r from-[#ff3377] to-[#ff5588] px-5 py-1.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-		>
-			{is_saving_profile ? 'SAVING...' : 'SAVE'}
-		</button>
+		<div class="flex items-center gap-2">
+			{#if can_close}
+				<button
+					type="button"
+					disabled={is_saving_profile}
+					class="cursor-pointer rounded-full border border-[#444] px-3 py-1.5 text-sm font-bold text-[#9ca3af] transition-colors hover:border-[#666] hover:text-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-50 sm:px-5"
+					onclick={() => {
+						reset_previews()
+						form_error = ''
+						on_close?.()
+					}}
+				>
+					CANCEL
+				</button>
+			{/if}
+			<button
+				type="submit"
+				disabled={is_saving_profile || has_errors}
+				class="cursor-pointer rounded-full bg-linear-to-r from-[#ff3377] to-[#ff5588] px-3 py-1.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:px-5"
+			>
+				{is_saving_profile ? 'SAVING...' : 'SAVE'}
+			</button>
+		</div>
 	</div>
 
 	{#if form_error}
@@ -209,7 +210,7 @@
 	{/if}
 
 	<div class="max-h-[80vh] overflow-y-auto pb-8">
-		<div class="group relative h-48 w-full bg-[#222]">
+		<div class="group relative h-36 w-full bg-[#222] sm:h-48">
 			<img
 				src={banner_preview || profile.banner_url}
 				alt="Banner"
@@ -217,8 +218,8 @@
 			/>
 
 			<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-				<div class="rounded-full bg-black/60 p-3 text-white backdrop-blur-md">
-					<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<div class="rounded-full bg-black/60 p-2 text-white backdrop-blur-md sm:p-3">
+					<svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -243,9 +244,9 @@
 			/>
 		</div>
 
-		<div class="relative px-4">
+		<div class="relative px-4 sm:px-6">
 			<div
-				class="group relative -mt-16 inline-block h-32 w-32 rounded-full border-4 border-[#161616] bg-[#222]"
+				class="group relative -mt-10 inline-block h-20 w-20 rounded-full border-4 border-[#161616] bg-[#222] sm:-mt-16 sm:h-32 sm:w-32"
 			>
 				<img
 					src={avatar_preview || profile.avatar_url}
@@ -281,7 +282,7 @@
 			</div>
 		</div>
 
-		<div class="mt-4 space-y-5 px-4">
+		<div class="mt-4 space-y-5 px-4 sm:px-6">
 			<div class="flex flex-col">
 				<label
 					for="name"

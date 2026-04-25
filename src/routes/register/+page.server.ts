@@ -1,4 +1,4 @@
-import { resolveMx } from 'node:dns/promises'
+import { resolveMx, resolve4, resolve6 } from 'node:dns/promises'
 import { fail, redirect } from '@sveltejs/kit'
 import { APIError } from 'better-auth/api'
 import { auth } from '$lib/server/auth'
@@ -14,9 +14,34 @@ const REGISTER_ERROR = 'Unable to create account'
 const domain_has_mx_records = async (email: string): Promise<boolean> => {
 	const domain = email.slice(email.lastIndexOf('@') + 1).toLowerCase()
 	if (!domain) return false
+
+	let should_try_a_aaaa = false
 	try {
 		const records = await resolveMx(domain)
-		return records.length > 0
+		if (records.length > 0) return true
+		// MX query returned empty — RFC 5321 A/AAAA fallback applies
+		should_try_a_aaaa = true
+	} catch (error) {
+		const code = (error as { code?: string }).code
+		if (code === 'ENODATA') {
+			// Domain exists but has no MX records — RFC 5321 A/AAAA fallback applies
+			should_try_a_aaaa = true
+		}
+		// ENOTFOUND (NXDOMAIN) or other DNS failure — domain is invalid
+	}
+
+	if (!should_try_a_aaaa) return false
+
+	try {
+		const addrs = await resolve4(domain)
+		if (addrs.length > 0) return true
+	} catch {
+		// no A records
+	}
+
+	try {
+		const addrs = await resolve6(domain)
+		return addrs.length > 0
 	} catch {
 		return false
 	}

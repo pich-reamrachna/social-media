@@ -57,8 +57,12 @@ export const auth = betterAuth({
 		enabled: true,
 		requireEmailVerification: true,
 		sendPasswordResetToken: async ({ user, url }: { user: { email: string }; url: string }) => {
-			console.info('[auth] sendPasswordResetToken called, url:', url)
 			const is_account_exists_flow = url.includes('account-exists')
+			console.info(
+				'[auth] sendPasswordResetToken: flow=%s recipient=%s',
+				is_account_exists_flow ? 'account-exists' : 'password-reset',
+				user.email
+			)
 
 			if (is_account_exists_flow) {
 				send_email({
