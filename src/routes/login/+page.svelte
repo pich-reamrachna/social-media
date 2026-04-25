@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths'
 	import type { ActionData, PageData } from './$types'
 
-	let username = $state('')
+	let identifier = $state('')
 	let password = $state('')
 	let should_remember_me = $state(false)
 	let is_show_password = $state(false)
@@ -10,7 +10,7 @@
 	const { form, data } = $props<{ form: ActionData; data: PageData }>()
 
 	$effect(() => {
-		username = form?.username ?? ''
+		identifier = form?.identifier ?? ''
 		should_remember_me = form?.should_remember_me ?? false
 	})
 
@@ -107,17 +107,18 @@
 
 				<div>
 					<label
-						for="username"
+						for="identifier"
 						class="mb-2 block text-[9px] font-medium tracking-[0.22em] text-gray-500 uppercase sm:text-[10px]"
 					>
-						Username
+						Email or Username
 					</label>
 					<input
 						type="text"
-						id="username"
-						name="username"
-						bind:value={username}
-						placeholder="Enter your username"
+						id="identifier"
+						name="identifier"
+						bind:value={identifier}
+						placeholder="Enter your email or username"
+						autocomplete="username"
 						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none sm:py-3.5"
 						required
 					/>

@@ -9,8 +9,7 @@ import type { Actions, PageServerLoad } from './$types'
 import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
 const REGISTER_LIMIT = { limit: 3, windowMs: 60_000 }
-const DUPLICATE_ACCOUNT_ERROR = 'Account already exists'
-const DUPLICATE_USERNAME_ERROR = 'Username already taken'
+const REGISTER_ERROR = 'Unable to create account'
 
 const domain_has_mx_records = async (email: string): Promise<boolean> => {
 	const domain = email.slice(email.lastIndexOf('@') + 1).toLowerCase()
@@ -42,20 +41,9 @@ const validate_password_strength = (password: string) => {
 	return errors
 }
 
-const get_register_error_message = (error_message: string | undefined) => {
-	const normalized_error = error_message?.toLowerCase() || ''
-
-	// Keep email-related failures generic for privacy, including mixed username+email conflicts.
-	if (normalized_error.includes('email')) {
-		return DUPLICATE_ACCOUNT_ERROR
-	}
-
-	return normalized_error.includes('username') ? DUPLICATE_USERNAME_ERROR : DUPLICATE_ACCOUNT_ERROR
-}
-
 const get_register_rate_limit_failure = async (
 	consume_failed_attempt: () => ReturnType<typeof consume_rate_limit>,
-	values: { username: string; email: string }
+	values: { email: string }
 ) => {
 	const failed_attempt_rate_limit = await consume_failed_attempt()
 
@@ -89,11 +77,10 @@ export const actions: Actions = {
 		}
 
 		const form_data = await event.request.formData()
-		const username = get_string(form_data, 'username')
 		const email = get_string(form_data, 'email')
 		const password = get_string(form_data, 'password')
 		const confirm_password = get_string(form_data, 'confirm_password')
-		const submitted_values = { username, email }
+		const submitted_values = { email }
 		const consume_failed_attempt = async () =>
 			consume_rate_limit({
 				key: rate_limit_key,
@@ -136,8 +123,7 @@ export const actions: Actions = {
 				body: {
 					email,
 					password,
-					name: username,
-					username
+					name: email.slice(0, email.lastIndexOf('@')) || email
 				}
 			})
 		} catch (error) {
@@ -174,7 +160,7 @@ export const actions: Actions = {
 			}
 
 			return fail(400, {
-				message: get_register_error_message(error.message),
+				message: REGISTER_ERROR,
 				...submitted_values
 			})
 		}

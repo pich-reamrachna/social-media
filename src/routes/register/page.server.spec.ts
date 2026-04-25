@@ -95,7 +95,6 @@ describe('register actions', () => {
 		const default_action = actions.default!
 		const result = await default_action(
 			create_event({
-				username: 'new-user',
 				email: 'new@fakeinvaliddomain99999.xyz',
 				password: 'ValidPassword1!',
 				confirm_password: 'ValidPassword1!'
@@ -106,7 +105,6 @@ describe('register actions', () => {
 			status: 400,
 			data: {
 				message: 'Email address appears to be invalid. Please check the domain.',
-				username: 'new-user',
 				email: 'new@fakeinvaliddomain99999.xyz'
 			}
 		})
@@ -125,7 +123,6 @@ describe('register actions', () => {
 		const default_action = actions.default!
 		const result = await default_action(
 			create_event({
-				username: 'new-user',
 				email: 'new@example.com',
 				password: 'weak',
 				confirm_password: 'weak'
@@ -136,7 +133,6 @@ describe('register actions', () => {
 			status: 429,
 			data: {
 				message: 'Too many registration attempts. Try again in 45 seconds.',
-				username: 'new-user',
 				email: 'new@example.com'
 			}
 		})
@@ -147,7 +143,6 @@ describe('register actions', () => {
 		const default_action = actions.default!
 		const result = await default_action(
 			create_event({
-				username: 'new-user',
 				email: 'new@example.com',
 				password: 'ValidPassword1!',
 				confirm_password: 'DifferentPassword1!'
@@ -158,35 +153,10 @@ describe('register actions', () => {
 			status: 400,
 			data: {
 				message: 'Passwords do not match',
-				username: 'new-user',
 				email: 'new@example.com'
 			}
 		})
 		expect(mocks.sign_up_email).not.toHaveBeenCalled()
-	})
-
-	it('returns a specific message when sign up fails on duplicate username only', async () => {
-		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Username already exists'))
-
-		const { actions } = await import('./+page.server')
-		const default_action = actions.default!
-		const result = await default_action(
-			create_event({
-				username: 'existing-user',
-				email: 'existing@example.com',
-				password: 'ValidPassword1!',
-				confirm_password: 'ValidPassword1!'
-			}) as never
-		)
-
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				message: 'Username already taken',
-				username: 'existing-user',
-				email: 'existing@example.com'
-			}
-		})
 	})
 
 	it('redirects silently and sends account-exists email on duplicate email', async () => {
@@ -197,28 +167,6 @@ describe('register actions', () => {
 		await expect(
 			default_action(
 				create_event({
-					username: 'new-user',
-					email: 'existing@example.com',
-					password: 'ValidPassword1!',
-					confirm_password: 'ValidPassword1!'
-				}) as never
-			)
-		).rejects.toMatchObject({ status: 302, location: '/login?verification=sent' })
-
-		expect(mocks.send_email).toHaveBeenCalledWith(
-			expect.objectContaining({ to: 'existing@example.com' })
-		)
-	})
-
-	it('redirects silently and sends account-exists email on duplicate username and email', async () => {
-		mocks.sign_up_email.mockRejectedValue(new mocks.APIError('Username and email already exist'))
-
-		const { actions } = await import('./+page.server')
-		const default_action = actions.default!
-		await expect(
-			default_action(
-				create_event({
-					username: 'existing-user',
 					email: 'existing@example.com',
 					password: 'ValidPassword1!',
 					confirm_password: 'ValidPassword1!'
@@ -239,7 +187,6 @@ describe('register actions', () => {
 		await expect(
 			default_action(
 				create_event({
-					username: 'new-user',
 					email: 'new@example.com',
 					password: 'ValidPassword1!',
 					confirm_password: 'ValidPassword1!'
@@ -253,8 +200,7 @@ describe('register actions', () => {
 			body: {
 				email: 'new@example.com',
 				password: 'ValidPassword1!',
-				name: 'new-user',
-				username: 'new-user'
+				name: 'new'
 			}
 		})
 	})

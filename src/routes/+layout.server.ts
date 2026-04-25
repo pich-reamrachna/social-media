@@ -18,11 +18,20 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 	}
 
 	if (AUTH_ROUTES.has(pathname) && has_session) {
-		throw redirect(302, '/home')
+		throw redirect(302, locals.user?.username ? '/home' : '/profile/setup')
 	}
 
 	if (is_protected_route(pathname) && !has_session) {
 		throw redirect(302, '/login')
+	}
+
+	if (
+		is_protected_route(pathname) &&
+		has_session &&
+		!locals.user?.username &&
+		pathname !== '/profile/setup'
+	) {
+		throw redirect(302, '/profile/setup')
 	}
 
 	return {

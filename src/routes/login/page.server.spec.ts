@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => {
 	class MockAPIError extends Error {}
 
 	return {
+		sign_in_email: vi.fn(),
 		sign_in_username: vi.fn(),
 		peek_rate_limit: vi.fn(),
 		consume_rate_limit: vi.fn(),
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('$lib/server/auth', () => ({
 	auth: {
 		api: {
+			signInEmail: mocks.sign_in_email,
 			signInUsername: mocks.sign_in_username
 		}
 	}
@@ -74,13 +76,13 @@ describe('login actions', () => {
 	}
 
 	it('returns a generic message when auth fails', async () => {
-		mocks.sign_in_username.mockRejectedValue(new mocks.APIError('User not found'))
+		mocks.sign_in_email.mockRejectedValue(new mocks.APIError('User not found'))
 
 		const { actions } = await import('./+page.server')
 		const default_action = actions.default!
 		const result = await default_action(
 			create_event({
-				username: 'existing-user',
+				identifier: 'existing@example.com',
 				password: 'wrong-password'
 			}) as never
 		)
@@ -88,8 +90,8 @@ describe('login actions', () => {
 		expect(result).toMatchObject({
 			status: 400,
 			data: {
-				message: 'Invalid username or password',
-				username: 'existing-user',
+				message: 'Invalid email, username, or password',
+				identifier: 'existing@example.com',
 				should_remember_me: false
 			}
 		})
@@ -97,13 +99,13 @@ describe('login actions', () => {
 	})
 
 	it('returns a verification message when email is not verified', async () => {
-		mocks.sign_in_username.mockRejectedValue(new mocks.APIError('Email not verified'))
+		mocks.sign_in_email.mockRejectedValue(new mocks.APIError('Email not verified'))
 
 		const { actions } = await import('./+page.server')
 		const default_action = actions.default!
 		const result = await default_action(
 			create_event({
-				username: 'existing-user',
+				identifier: 'existing@example.com',
 				password: 'CorrectPassword1!'
 			}) as never
 		)
@@ -113,7 +115,7 @@ describe('login actions', () => {
 			data: {
 				message:
 					'Please verify your email before signing in. Check your inbox for a verification link.',
-				username: 'existing-user',
+				identifier: 'existing@example.com',
 				should_remember_me: false
 			}
 		})
@@ -121,7 +123,7 @@ describe('login actions', () => {
 	})
 
 	it('keeps submitted fields when login failures hit the rate limit', async () => {
-		mocks.sign_in_username.mockRejectedValue(new mocks.APIError('User not found'))
+		mocks.sign_in_email.mockRejectedValue(new mocks.APIError('User not found'))
 		mocks.consume_rate_limit
 			.mockResolvedValueOnce({
 				ok: true,
@@ -140,7 +142,7 @@ describe('login actions', () => {
 		const default_action = actions.default!
 		const result = await default_action(
 			create_event({
-				username: 'existing-user',
+				identifier: 'existing@example.com',
 				password: 'wrong-password',
 				should_remember_me: 'on'
 			}) as never
@@ -150,13 +152,40 @@ describe('login actions', () => {
 			status: 429,
 			data: {
 				message: 'Too many login attempts. Try again in 30 seconds.',
-				username: 'existing-user',
+				identifier: 'existing@example.com',
 				should_remember_me: true
 			}
 		})
 	})
 
-	it('redirects to home when login succeeds', async () => {
+	it('signs in with email and redirects to home when the identifier is an email', async () => {
+		mocks.sign_in_email.mockResolvedValue(undefined)
+
+		const { actions } = await import('./+page.server')
+		const default_action = actions.default!
+		await expect(
+			default_action(
+				create_event({
+					identifier: 'existing@example.com',
+					password: 'CorrectPassword1!',
+					should_remember_me: 'on'
+				}) as never
+			)
+		).rejects.toMatchObject({
+			status: 302,
+			location: '/home'
+		})
+		expect(mocks.sign_in_email).toHaveBeenCalledWith({
+			body: {
+				email: 'existing@example.com',
+				password: 'CorrectPassword1!',
+				rememberMe: true
+			}
+		})
+		expect(mocks.sign_in_username).not.toHaveBeenCalled()
+	})
+
+	it('signs in with username and redirects to home when the identifier is not an email', async () => {
 		mocks.sign_in_username.mockResolvedValue(undefined)
 
 		const { actions } = await import('./+page.server')
@@ -164,7 +193,7 @@ describe('login actions', () => {
 		await expect(
 			default_action(
 				create_event({
-					username: 'existing-user',
+					identifier: 'existing_user',
 					password: 'CorrectPassword1!',
 					should_remember_me: 'on'
 				}) as never
@@ -175,10 +204,11 @@ describe('login actions', () => {
 		})
 		expect(mocks.sign_in_username).toHaveBeenCalledWith({
 			body: {
-				username: 'existing-user',
+				username: 'existing_user',
 				password: 'CorrectPassword1!',
 				rememberMe: true
 			}
 		})
+		expect(mocks.sign_in_email).not.toHaveBeenCalled()
 	})
 })

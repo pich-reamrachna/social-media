@@ -1,14 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
 	import type { ActionData } from './$types'
-	import {
-		MIN_USERNAME_LENGTH,
-		MAX_USERNAME_LENGTH,
-		MIN_PASSWORD_LENGTH
-	} from '$lib/constants/auth'
+	import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
-	let email = $state('')
-	let username = $state('')
+	const { form } = $props<{ form: ActionData }>()
+
+	let email = $state(form?.email ?? '')
 	let password = $state('')
 	let confirm_password = $state('')
 
@@ -17,21 +14,11 @@
 	let email_status = $state<'idle' | 'invalid' | 'valid'>('idle')
 	let email_message = $state('')
 
-	let username_status = $state<'idle' | 'error' | 'valid'>('idle')
-	let username_message = $state('')
-
 	let password_status = $state<'idle' | 'invalid' | 'valid'>('idle')
 	let password_message = $state('')
 
 	let confirm_password_status = $state<'idle' | 'invalid' | 'valid'>('idle')
 	let confirm_password_message = $state('')
-
-	const { form } = $props<{ form: ActionData }>()
-
-	$effect(() => {
-		email = form?.email ?? ''
-		username = form?.username ?? ''
-	})
 
 	const check_email = (value: string) => {
 		const trimmed = value.trim()
@@ -50,35 +37,6 @@
 
 		email_status = 'valid'
 		email_message = ''
-	}
-
-	const check_username = (value: string) => {
-		const trimmed = value.trim()
-
-		if (!trimmed) {
-			username_status = 'idle'
-			username_message = ''
-			return
-		}
-
-		if (!/^[a-z0-9._]+$/.test(trimmed)) {
-			username_status = 'error'
-			username_message = 'Username allows only lowercase letters, numbers, dots, and underscores'
-			return
-		}
-
-		if (trimmed.length < MIN_USERNAME_LENGTH) {
-			username_status = 'error'
-			username_message = 'Username must be at least 3 characters'
-			return
-		} else if (trimmed.length > MAX_USERNAME_LENGTH) {
-			username_status = 'error'
-			username_message = 'Username must be less than 20 characters'
-			return
-		}
-
-		username_status = 'valid'
-		username_message = ''
 	}
 
 	const validate_password = (value: string) => {
@@ -125,7 +83,6 @@
 	// eslint-disable-next-line prefer-const
 	let has_errors = $derived(
 		email_status === 'invalid' ||
-			username_status === 'error' ||
 			password_status === 'invalid' ||
 			confirm_password_status === 'invalid'
 	)
@@ -251,34 +208,6 @@
 					{#if email_message}
 						<p class:text-red-400={email_status === 'invalid'} class="mt-2 text-sm break-words">
 							{email_message}
-						</p>
-					{/if}
-				</div>
-
-				<div>
-					<label
-						for="username"
-						class="mb-3 block text-[10px] font-medium tracking-widest text-gray-500 uppercase"
-					>
-						Username
-					</label>
-					<input
-						type="text"
-						id="username"
-						name="username"
-						bind:value={username}
-						oninput={(e) => check_username((e.currentTarget as HTMLInputElement).value)}
-						placeholder="Choose a username"
-						class="w-full rounded-lg border border-gray-800 bg-black px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors focus:border-[#ff5c8d] focus:ring-1 focus:ring-[#ff5c8d] focus:outline-none"
-						required
-					/>
-					{#if username_message}
-						<p
-							class:text-green-400={username_status === 'valid'}
-							class:text-red-400={username_status === 'error'}
-							class="mt-2 text-sm break-words"
-						>
-							{username_message}
 						</p>
 					{/if}
 				</div>

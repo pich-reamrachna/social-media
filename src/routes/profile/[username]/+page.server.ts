@@ -11,11 +11,13 @@ import { dev } from '$app/environment'
 import { error, fail } from '@sveltejs/kit'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { upload_cloudinary } from '$lib/server/cloudinary'
+import { MAX_USERNAME_LENGTH, MIN_USERNAME_LENGTH } from '$lib/constants/auth'
 import type { Actions, PageServerLoad } from './$types'
 
 const PROFILE_POSTS_LIMIT = 20
 const PROFILE_LIKED_POSTS_LIMIT = 20
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
+const USERNAME_PATTERN = /^[a-z0-9._]+$/
 
 // --- PROFILE LOADING LOGIC ---
 const log_dev_duration = (label: string, started_at: number) => {
@@ -31,6 +33,21 @@ const load_profile_user = async (target_username: string) => {
 	})
 	log_dev_duration('[profile.load] profile user query took', started_at)
 	return profile_user
+}
+
+const validate_username = (username: string) => {
+	if (!username) return 'Username is required'
+	if (!USERNAME_PATTERN.test(username)) {
+		return 'Username allows only lowercase letters, numbers, dots, and underscores'
+	}
+	if (username.length < MIN_USERNAME_LENGTH) {
+		return `Username must be at least ${MIN_USERNAME_LENGTH} characters`
+	}
+	if (username.length > MAX_USERNAME_LENGTH) {
+		return `Username must be less than ${MAX_USERNAME_LENGTH} characters`
+	}
+
+	return undefined
 }
 
 const load_profile_posts = async (user_id: string) => {
@@ -258,9 +275,12 @@ export const actions: Actions = {
 
 		const form_data = await request.formData()
 		const name = form_data.get('name')
+		const username_value = form_data.get('username')
 		const bio = form_data.get('bio')
 		const banner_file = form_data.get('banner') as File | null
 		const avatar_file = form_data.get('avatar') as File | null
+		const next_username =
+			typeof username_value === 'string' ? username_value.trim().toLowerCase() : ''
 
 		if (typeof name !== 'string' || !name.trim()) {
 			return fail(400, { message: 'Name is required' })
@@ -270,8 +290,23 @@ export const actions: Actions = {
 			return fail(400, { message: 'Name must be under 50 characters' })
 		}
 
+		const username_error = validate_username(next_username)
+		if (username_error) {
+			return fail(400, { message: username_error })
+		}
+
+		const existing_user = await db.query.user.findFirst({
+			where: eq(user.username, next_username),
+			columns: { id: true }
+		})
+		if (existing_user && existing_user.id !== viewer.id) {
+			return fail(400, { message: 'Username already taken' })
+		}
+
 		const update_payload: Partial<typeof user.$inferSelect> = {
-			name: name.trim()
+			name: name.trim(),
+			username: next_username,
+			displayUsername: next_username
 		}
 
 		if (typeof bio === 'string') {
@@ -279,19 +314,19 @@ export const actions: Actions = {
 		}
 
 		try {
-			if (avatar_file && avatar_file instanceof File && avatar_file.size > 0) {
+			if (avatar_file instanceof File && avatar_file.size > 0) {
 				const avatar_url = await upload_cloudinary(avatar_file, 'avatars')
 				update_payload.image = avatar_url
 			}
 
-			if (banner_file && banner_file instanceof File && banner_file.size > 0) {
+			if (banner_file instanceof File && banner_file.size > 0) {
 				const banner_url = await upload_cloudinary(banner_file, 'banners')
 				update_payload.banner = banner_url
 			}
 
 			await db.update(user).set(update_payload).where(eq(user.id, viewer.id))
 
-			return { success: true }
+			return { success: true, profile_url: `/profile/${next_username}` }
 		} catch (err) {
 			console.error('Update failed: ', err)
 			return fail(500, { message: 'Failed to update profile' })
