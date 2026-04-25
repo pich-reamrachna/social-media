@@ -2,6 +2,7 @@
 	import { deserialize } from '$app/forms'
 	import { goto } from '$app/navigation'
 	import { resolve } from '$app/paths'
+	import { onDestroy } from 'svelte'
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import RightSidebar from '$lib/components/RightSidebar.svelte'
@@ -45,6 +46,17 @@
 	let is_bio_updating = $state(false)
 	let avatar_url_at_save = ''
 	let banner_url_at_save = ''
+
+	$effect(() => {
+		if (typeof document !== 'undefined') {
+			if (is_edit_modal_open) {
+				document.body.style.overflow = 'hidden'
+			} else {
+				document.body.style.overflow = ''
+			}
+		}
+	})
+
 	let toast = $state<{
 		type: 'success' | 'error'
 		message: string
@@ -67,6 +79,12 @@
 		if (data.profile.avatar_url === avatar_url_at_save) is_avatar_updating = false
 		if (data.profile.banner_url === banner_url_at_save) is_banner_updating = false
 		is_bio_updating = false
+	})
+
+	onDestroy(() => {
+		if (typeof document !== 'undefined') {
+			document.body.style.overflow = ''
+		}
 	})
 
 	function get_safe_count(count: number) {
