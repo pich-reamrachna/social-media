@@ -23,14 +23,10 @@
 		}
 	} = $props()
 
-	let current_user = $state<SideNavUser | undefined>(undefined)
-	let who_to_follow = $state<SideNavUser[]>([])
+	let current_user_override = $state<SideNavUser | undefined>()
+	const current_user = $derived(current_user_override ?? data.current_user)
+	const who_to_follow = $derived(data.who_to_follow)
 	type FeedPost = ProfilePost
-
-	$effect(() => {
-		current_user = data.current_user
-		who_to_follow = data.who_to_follow
-	})
 
 	let active_tab = $state<'for-you' | 'following'>('for-you')
 	const home_tabs = [
@@ -144,7 +140,7 @@
 				throw new Error('Failed to update follow')
 			}
 			const current_user_snapshot = current_user
-			current_user = {
+			current_user_override = {
 				...current_user_snapshot,
 				stats: {
 					followers: get_safe_count(current_user_snapshot.stats?.followers),

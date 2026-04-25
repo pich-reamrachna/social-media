@@ -30,14 +30,11 @@
 		}
 	} = $props()
 
-	let current_user = $state<SideNavUser | undefined>(undefined)
-	let who_to_follow = $state<SideNavUser[]>([])
+	let current_user_override = $state<SideNavUser | undefined>()
+	let who_to_follow_override = $state<SideNavUser[] | undefined>()
+	const current_user = $derived(current_user_override ?? data.current_user)
+	const who_to_follow = $derived(who_to_follow_override ?? data.who_to_follow)
 	let active_tab = $state<'Posts' | 'media' | 'liked posts'>('Posts')
-
-	$effect(() => {
-		current_user = data.current_user
-		who_to_follow = data.who_to_follow
-	})
 	let is_settings_open = $state(false)
 	let profile_posts = $state<ProfilePost[]>([])
 	let profile_liked_posts = $state<ProfilePost[]>([])
@@ -182,7 +179,7 @@
 
 	function update_current_user_following(delta: number) {
 		if (!current_user) return
-		current_user = {
+		current_user_override = {
 			...current_user,
 			stats: {
 				followers: current_user.stats?.followers ?? 0,
@@ -216,15 +213,18 @@
 		try {
 			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
 			const result = deserialize(await response.text())
+
 			if (result.type !== 'success') throw new Error()
 			const payload = result.data as { is_following?: boolean }
 			const is_following_payload = payload.is_following
+
 			if (typeof is_following_payload !== 'boolean') throw new Error()
 			is_profile_following = !!is_following_payload
 			profile_followers = get_safe_count(profile_followers + (is_following_payload ? 1 : -1))
 			update_current_user_following(is_following_payload ? 1 : -1)
+
 			if (is_following_payload) {
-				who_to_follow = who_to_follow.filter((user) => user.id !== data.profile.id)
+				who_to_follow_override = who_to_follow.filter((user) => user.id !== data.profile.id)
 			}
 			show_toast('success', is_following_payload ? 'Followed!' : 'Unfollowed')
 		} catch {
@@ -242,10 +242,12 @@
 			form_data.append('userId', user_id)
 			const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
 			const result = deserialize(await response.text())
+
 			if (result.type !== 'success') {
 				throw new Error('Failed to update follow')
 			}
 			const payload = result.data as { is_following?: boolean }
+
 			if (typeof payload.is_following !== 'boolean') {
 				throw new Error('Failed to update follow')
 			}
