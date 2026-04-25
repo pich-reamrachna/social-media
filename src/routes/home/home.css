@@ -801,6 +801,95 @@
 	}
 }
 
+/* Skeleton loader */
+
+@keyframes skeleton-shimmer {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}
+
+.skeleton {
+	background: linear-gradient(90deg, #1a1a1a 25%, #252525 50%, #1a1a1a 75%);
+	background-size: 200% 100%;
+	animation: skeleton-shimmer 1.6s ease-in-out infinite;
+	border-radius: 0.375rem;
+}
+
+.skeleton-post {
+	padding: 1.25rem;
+	border-bottom: 1px solid #1f1f1f;
+}
+
+.skeleton-post-header {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+	margin-bottom: 0.875rem;
+}
+
+.skeleton-avatar {
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: 9999px;
+	flex-shrink: 0;
+}
+
+.skeleton-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	flex: 1;
+	padding-top: 0.25rem;
+}
+
+.skeleton-name {
+	height: 0.75rem;
+	width: 7rem;
+}
+
+.skeleton-handle {
+	height: 0.65rem;
+	width: 5rem;
+}
+
+.skeleton-body {
+	margin-left: 3.25rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.skeleton-line {
+	height: 0.8rem;
+	width: 100%;
+}
+
+.skeleton-line-med {
+	height: 0.8rem;
+	width: 78%;
+}
+
+.skeleton-line-short {
+	height: 0.8rem;
+	width: 52%;
+}
+
+.skeleton-actions {
+	display: flex;
+	gap: 1.5rem;
+	margin-left: 3.25rem;
+	margin-top: 0.875rem;
+}
+
+.skeleton-action {
+	height: 0.65rem;
+	width: 2.5rem;
+}
+
 .toast {
 	position: fixed;
 	top: 1.5rem;

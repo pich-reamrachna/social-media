@@ -40,6 +40,11 @@
 	let profile_followers = $state(0)
 	let is_follow_pending = $state(false)
 	let is_edit_modal_open = $state(false)
+	let is_avatar_updating = $state(false)
+	let is_banner_updating = $state(false)
+	let is_bio_updating = $state(false)
+	let avatar_url_at_save = ''
+	let banner_url_at_save = ''
 	let toast = $state<{
 		type: 'success' | 'error'
 		message: string
@@ -59,6 +64,9 @@
 		like_count_override = {}
 		is_profile_following = data.is_following
 		profile_followers = get_safe_count(data.profile.stats.followers)
+		if (data.profile.avatar_url === avatar_url_at_save) is_avatar_updating = false
+		if (data.profile.banner_url === banner_url_at_save) is_banner_updating = false
+		is_bio_updating = false
 	})
 
 	function get_safe_count(count: number) {
@@ -300,22 +308,44 @@
 			</div>
 		</header>
 
-		<div class="h-48 w-full overflow-hidden bg-[#111]">
+		<div class="relative h-48 w-full overflow-hidden bg-[#111]">
 			{#if data.profile.banner_url}
-				<img src={data.profile.banner_url} alt="" class="h-full w-full object-cover" />
+				<img
+					src={data.profile.banner_url}
+					alt=""
+					class="h-full w-full object-cover"
+					onload={() => {
+						if (is_banner_updating && data.profile.banner_url !== banner_url_at_save) {
+							is_banner_updating = false
+						}
+					}}
+				/>
+			{/if}
+			{#if is_banner_updating}
+				<div class="skeleton absolute inset-0" style="border-radius: 0;"></div>
 			{/if}
 		</div>
 
 		<div class="relative flex items-start justify-between px-4">
-			<img
-				src={data.profile.avatar_url}
-				alt={data.profile.name}
-				class="z-10 -mt-15 h-30 w-30 rounded-full border-4 border-[#0d0d0d] bg-[#1f1f1f] object-cover"
-				onerror={(e) => {
-					;(e.currentTarget as HTMLImageElement).src =
-						`https://i.pravatar.cc/150?u=${data.profile.id}`
-				}}
-			/>
+			<div class="relative z-10 -mt-15">
+				<img
+					src={data.profile.avatar_url}
+					alt={data.profile.name}
+					class="h-30 w-30 rounded-full border-4 border-[#0d0d0d] bg-[#1f1f1f] object-cover"
+					onerror={(e) => {
+						;(e.currentTarget as HTMLImageElement).src =
+							`https://i.pravatar.cc/150?u=${data.profile.id}`
+					}}
+					onload={() => {
+						if (is_avatar_updating && data.profile.avatar_url !== avatar_url_at_save) {
+							is_avatar_updating = false
+						}
+					}}
+				/>
+				{#if is_avatar_updating}
+					<div class="skeleton absolute inset-0" style="border-radius: 9999px;"></div>
+				{/if}
+			</div>
 
 			<div class="mt-3">
 				{#if data.is_owner}
@@ -348,14 +378,26 @@
 		</div>
 
 		<div class="px-4 pt-3 pb-4">
-			<h1 class="m-0 text-2xl leading-tight font-extrabold">{data.profile.name}</h1>
-			<span class="text-[0.95rem] text-[#6b7280]">@{data.profile.handle}</span>
+			<div class="relative">
+				<h1 class="m-0 text-2xl leading-tight font-extrabold">{data.profile.name}</h1>
+				<span class="text-[0.95rem] text-[#6b7280]">@{data.profile.handle}</span>
 
-			<p
-				class="my-3 text-[0.9375rem] leading-[1.6] wrap-break-word whitespace-pre-wrap text-[#e5e7eb]"
-			>
-				{data.profile.bio}
-			</p>
+				<p
+					class="my-3 text-[0.9375rem] leading-[1.6] wrap-break-word whitespace-pre-wrap text-[#e5e7eb]"
+				>
+					{data.profile.bio}
+				</p>
+				{#if is_bio_updating}
+					<div class="absolute inset-0 flex flex-col gap-2 bg-[#0d0d0d] pt-1">
+						<div class="skeleton h-7 w-44"></div>
+						<div class="skeleton h-3.5 w-24"></div>
+						<div class="mt-3 space-y-2">
+							<div class="skeleton h-3.5 w-full"></div>
+							<div class="skeleton h-3.5 w-3/4"></div>
+						</div>
+					</div>
+				{/if}
+			</div>
 
 			<div class="mb-3 flex flex-wrap gap-4 text-[0.85rem] text-[#6b7280]">
 				<span class="flex items-center gap-1">📍 Phnom Penh, Cambodia</span>
@@ -399,9 +441,26 @@
 
 		<div class="pb-12">
 			{#if active_tab === 'liked posts' && is_liked_posts_loading}
-				<div class="p-10 text-center text-[#6b7280]">
-					<p>Loading liked posts...</p>
-				</div>
+				{#each [0, 1, 2] as i (i)}
+					<div class="skeleton-post">
+						<div class="skeleton-post-header">
+							<div class="skeleton skeleton-avatar"></div>
+							<div class="skeleton-meta">
+								<div class="skeleton skeleton-name"></div>
+								<div class="skeleton skeleton-handle"></div>
+							</div>
+						</div>
+						<div class="skeleton-body">
+							<div class="skeleton skeleton-line"></div>
+							<div class="skeleton skeleton-line-med"></div>
+							<div class="skeleton skeleton-line-short"></div>
+						</div>
+						<div class="skeleton-actions">
+							<div class="skeleton skeleton-action"></div>
+							<div class="skeleton skeleton-action"></div>
+						</div>
+					</div>
+				{/each}
 			{:else}
 				{#each displayed_posts as post (post.id)}
 					<Post
@@ -448,6 +507,13 @@
 						avatar_url: data.profile.avatar_url
 					}}
 					on_close={() => (is_edit_modal_open = false)}
+					on_profile_update_start={(changes) => {
+						avatar_url_at_save = data.profile.avatar_url
+						banner_url_at_save = data.profile.banner_url
+						is_avatar_updating = changes.avatar
+						is_banner_updating = changes.banner
+						is_bio_updating = changes.text
+					}}
 				/>
 			</div>
 		</div>

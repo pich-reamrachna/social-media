@@ -5,3 +5,34 @@
 #sveltekit-body-wrapper {
 	display: contents;
 }
+
+.nav-progress {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 2px;
+	z-index: 99999;
+	overflow: hidden;
+	background: rgba(255, 51, 119, 0.15);
+}
+
+.nav-progress::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 100%;
+	width: 40%;
+	background: linear-gradient(to right, #ff3377, #ff7eb3);
+	animation: nav-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes nav-slide {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(350%);
+	}
+}
