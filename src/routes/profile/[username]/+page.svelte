@@ -30,7 +30,14 @@
 		}
 	} = $props()
 
+	let current_user = $state<SideNavUser | undefined>(undefined)
+	let who_to_follow = $state<SideNavUser[]>([])
 	let active_tab = $state<'Posts' | 'media' | 'liked posts'>('Posts')
+
+	$effect(() => {
+		current_user = data.current_user
+		who_to_follow = data.who_to_follow
+	})
 	let is_settings_open = $state(false)
 	let profile_posts = $state<ProfilePost[]>([])
 	let profile_liked_posts = $state<ProfilePost[]>([])
@@ -42,6 +49,15 @@
 	let profile_followers = $state(0)
 	let is_follow_pending = $state(false)
 	let is_edit_modal_open = $state(false)
+	let toast = $state<{
+		type: 'success' | 'error'
+		message: string
+		visible: boolean
+	}>({
+		type: 'success',
+		message: '',
+		visible: false
+	})
 
 	$effect(() => {
 		profile_posts = [...data.posts]
@@ -164,13 +180,36 @@
 		}
 	}
 
+	function update_current_user_following(delta: number) {
+		if (!current_user) return
+		current_user = {
+			...current_user,
+			stats: {
+				followers: current_user.stats?.followers ?? 0,
+				following: Math.max(0, (current_user.stats?.following ?? 0) + delta)
+			}
+		}
+	}
+
+	function sync_viewed_profile_follow_state(user_id: string, is_following: boolean) {
+		if (user_id !== data.profile.id) return
+
+		const follower_delta = is_following === is_profile_following ? 0 : is_following ? 1 : -1
+		is_profile_following = is_following
+		profile_followers = get_safe_count(profile_followers + follower_delta)
+	}
+
+	function show_toast(type: 'success' | 'error', message: string, duration = 3000) {
+		toast = { type, message, visible: true }
+		setTimeout(() => {
+			toast.visible = false
+		}, duration)
+	}
+
 	async function toggle_profile_follow() {
 		if (is_follow_pending) return
 		const did_follow = is_profile_following
-		const is_next = !did_follow
 		is_follow_pending = true
-		is_profile_following = is_next
-		profile_followers = get_safe_count(profile_followers + (is_next ? 1 : -1))
 
 		const form_data = new FormData()
 		form_data.append('userId', data.profile.id)
@@ -179,10 +218,19 @@
 			const result = deserialize(await response.text())
 			if (result.type !== 'success') throw new Error()
 			const payload = result.data as { is_following?: boolean }
-			is_profile_following = !!payload.is_following
+			const is_following_payload = payload.is_following
+			if (typeof is_following_payload !== 'boolean') throw new Error()
+			is_profile_following = !!is_following_payload
+			profile_followers = get_safe_count(profile_followers + (is_following_payload ? 1 : -1))
+			update_current_user_following(is_following_payload ? 1 : -1)
+			if (is_following_payload) {
+				who_to_follow = who_to_follow.filter((user) => user.id !== data.profile.id)
+			}
+			show_toast('success', is_following_payload ? 'Followed!' : 'Unfollowed')
 		} catch {
+			// keep the previous follow state on failure
 			is_profile_following = did_follow
-			profile_followers = get_safe_count(profile_followers + (did_follow ? 1 : -1))
+			show_toast('error', 'Failed to update follow')
 		} finally {
 			is_follow_pending = false
 		}
@@ -193,7 +241,17 @@
 		form_data.append('userId', user_id)
 		const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
 		const result = deserialize(await response.text())
-		if (result.type !== 'success') throw new Error('Follow failed')
+		if (result.type !== 'success') {
+			show_toast('error', 'Failed to update follow')
+			throw new Error('Follow failed')
+		}
+		const payload = result.data as { is_following?: boolean }
+		if (typeof payload.is_following === 'boolean') {
+			const is_following_payload = payload.is_following
+			update_current_user_following(is_following_payload ? 1 : -1)
+			sync_viewed_profile_follow_state(user_id, is_following_payload)
+			show_toast('success', is_following_payload ? 'Followed!' : 'Unfollowed')
+		}
 	}
 
 	function open_profile(handle: string) {
@@ -202,9 +260,21 @@
 </script>
 
 <div class="home-shell">
-	{#if data.current_user}
+	{#if toast.visible}
+		<div
+			class="toast"
+			class:toast-success={toast.type === 'success'}
+			class:toast-error={toast.type === 'error'}
+			role="status"
+			aria-live="polite"
+		>
+			<span class="toast-message">{toast.message}</span>
+		</div>
+	{/if}
+
+	{#if current_user}
 		<SideNav
-			current_user={data.current_user}
+			{current_user}
 			active_route={resolve(`/profile/${data.profile.handle}`)}
 			{is_settings_open}
 			on_settings_toggle={() => (is_settings_open = !is_settings_open)}
@@ -253,10 +323,14 @@
 					<button
 						class="follow-btn"
 						class:follow-btn-active={is_profile_following}
+						class:follow-btn-pending={is_follow_pending}
 						disabled={is_follow_pending}
+						aria-busy={is_follow_pending}
 						onclick={toggle_profile_follow}
 					>
-						{#if is_profile_following}
+						{#if is_follow_pending}
+							{is_profile_following ? 'Unfollowing...' : 'Following...'}
+						{:else if is_profile_following}
 							<span class="follow-text">Following</span>
 							<span class="unfollow-text">Unfollow</span>
 						{:else}
@@ -271,7 +345,9 @@
 			<h1 class="m-0 text-2xl leading-tight font-extrabold">{data.profile.name}</h1>
 			<span class="text-[0.95rem] text-[#6b7280]">@{data.profile.handle}</span>
 
-			<p class="my-3 text-[0.9375rem] leading-[1.6] break-words whitespace-pre-wrap text-[#e5e7eb]">
+			<p
+				class="my-3 text-[0.9375rem] leading-[1.6] wrap-break-word whitespace-pre-wrap text-[#e5e7eb]"
+			>
 				{data.profile.bio}
 			</p>
 
@@ -346,7 +422,7 @@
 
 	<RightSidebar
 		trending={data.trending}
-		who_to_follow={data.who_to_follow}
+		{who_to_follow}
 		on_open_profile={open_profile}
 		on_toggle_follow={sidebar_toggle_follow}
 	/>

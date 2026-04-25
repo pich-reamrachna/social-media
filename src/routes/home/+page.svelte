@@ -22,7 +22,15 @@
 			trending: TrendingItem[]
 		}
 	} = $props()
+
+	let current_user = $state<SideNavUser | undefined>(undefined)
+	let who_to_follow = $state<SideNavUser[]>([])
 	type FeedPost = ProfilePost
+
+	$effect(() => {
+		current_user = data.current_user
+		who_to_follow = data.who_to_follow
+	})
 
 	let active_tab = $state<'for-you' | 'following'>('for-you')
 	const home_tabs = [
@@ -117,9 +125,26 @@
 		const response = await fetch('?/toggle_follow', { method: 'POST', body: form_data })
 		const result = deserialize(await response.text())
 
-		if (result.type !== 'success') throw new Error('Follow failed')
+		if (result.type !== 'success') {
+			show_toast('error', 'Failed to update follow')
+			throw new Error('Follow failed')
+		}
 
 		const payload = result.data as { is_following?: boolean }
+		if (typeof payload.is_following === 'boolean') {
+			if (!current_user) return
+			const current_user_snapshot = current_user
+			current_user = {
+				...current_user_snapshot,
+				stats: {
+					followers: current_user_snapshot.stats?.followers ?? 0,
+					following: Math.max(
+						0,
+						(current_user_snapshot.stats?.following ?? 0) + (payload.is_following ? 1 : -1)
+					)
+				}
+			}
+		}
 		show_toast('success', payload.is_following ? 'Followed!' : 'Unfollowed')
 	}
 
@@ -283,17 +308,19 @@
 		</div>
 	{/if}
 
-	<SideNav
-		current_user={data.current_user}
-		active_route={resolve('/home')}
-		{is_settings_open}
-		on_settings_toggle={() => (is_settings_open = !is_settings_open)}
-	/>
+	{#if current_user}
+		<SideNav
+			{current_user}
+			active_route={resolve('/home')}
+			{is_settings_open}
+			on_settings_toggle={() => (is_settings_open = !is_settings_open)}
+		/>
+	{/if}
 
 	<section class="mobile-prelude" aria-label="Top feed section">
 		<div class="mobile-header">
 			<span class="mobile-logo">Y</span>
-			<img src={data.current_user.avatar_url} alt={data.current_user.name} class="mobile-avatar" />
+			<img src={current_user?.avatar_url} alt={current_user?.name ?? ''} class="mobile-avatar" />
 		</div>
 	</section>
 
@@ -366,11 +393,7 @@
 				}
 			}}
 		>
-			<img
-				src={data.current_user.avatar_url}
-				alt={data.current_user.name}
-				class="composer-avatar"
-			/>
+			<img src={current_user?.avatar_url} alt={current_user?.name ?? ''} class="composer-avatar" />
 			<div class="composer-body">
 				<textarea
 					name="content"
@@ -476,7 +499,7 @@
 
 	<RightSidebar
 		trending={data.trending}
-		who_to_follow={data.who_to_follow}
+		{who_to_follow}
 		{search_query}
 		search_users={search_results}
 		{on_search_change}

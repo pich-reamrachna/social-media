@@ -10,7 +10,7 @@ import {
 } from '$lib/server/rate-limit'
 import { FEED_LIMIT } from '$lib/constants/post'
 import { fail, redirect } from '@sveltejs/kit'
-import { desc, and, eq, inArray, sql } from 'drizzle-orm'
+import { desc, and, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
@@ -18,6 +18,7 @@ const UPLOAD_TIMEOUT_MS = 30_000
 const CREATE_POST_LIMIT = { limit: 5, windowMs: 60_000 }
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
 const TOGGLE_FOLLOW_LIMIT = { limit: 15, windowMs: 60_000 }
+const WHO_TO_FOLLOW_LIMIT = 6
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
 type UploadedPostImage = {
@@ -134,7 +135,9 @@ const upload_post_image = async (image: ValidatedImageUpload) => {
 			(error, result) => {
 				clearTimeout(timeout)
 				if (error || !result?.secure_url || !result.public_id) {
-					reject(error ?? new Error('Cloudinary upload failed'))
+					reject(
+						error instanceof Error ? error : new Error(error?.message ?? 'Cloudinary upload failed')
+					)
 					return
 				}
 
@@ -214,6 +217,35 @@ const load_home_follow_counts = async (user_id: string) => {
 	}
 }
 
+const load_suggested_users = async (user_id: string) => {
+	const current_following = await db
+		.select({ id: follow.followingId })
+		.from(follow)
+		.where(eq(follow.followerId, user_id))
+	const following_ids = current_following.map((entry) => entry.id)
+	const suggestion_conditions = [sql`${user.id} != ${user_id}`, sql`${user.username} is not null`]
+
+	if (following_ids.length > 0) {
+		suggestion_conditions.push(notInArray(user.id, following_ids))
+	}
+
+	const suggestions = await db.query.user.findMany({
+		where: and(...suggestion_conditions),
+		orderBy: [desc(user.createdAt)],
+		limit: WHO_TO_FOLLOW_LIMIT
+	})
+
+	return suggestions.map(
+		(suggested_user): SideNavUser => ({
+			id: suggested_user.id,
+			name: suggested_user.name,
+			handle: suggested_user.username!,
+			avatar_url: suggested_user.image || `https://i.pravatar.cc/150?u=${suggested_user.id}`,
+			is_following: false
+		})
+	)
+}
+
 export const load: PageServerLoad = async ({ locals }) => {
 	const user_local = locals.user
 	if (!user_local) throw redirect(302, '/login')
@@ -236,6 +268,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	const stats = await load_home_follow_counts(user_local.id)
+	const who_to_follow = await load_suggested_users(user_local.id)
 
 	const trending = [
 		{ category: 'TECHNOLOGY · TRENDING', tag: '#NeuralInterface', count: '45.2K' },
@@ -254,7 +287,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		current_user,
 		posts: posts_raw.map((p) => map_home_post(p, liked_ids)),
-		trending
+		trending,
+		who_to_follow
 	}
 }
 

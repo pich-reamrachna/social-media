@@ -11,7 +11,7 @@ import {
 import { dev } from '$app/environment'
 import { PROFILE_POSTS_LIMIT } from '$lib/constants/post'
 import { error, fail } from '@sveltejs/kit'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import { upload_cloudinary } from '$lib/server/cloudinary'
 import { MAX_BIO_LENGTH, validate_username } from '$lib/constants/auth'
 import type { Actions, PageServerLoad } from './$types'
@@ -19,6 +19,7 @@ import type { Actions, PageServerLoad } from './$types'
 const PROFILE_LIKED_POSTS_LIMIT = 20
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
 const TOGGLE_FOLLOW_LIMIT = { limit: 15, windowMs: 60_000 }
+const WHO_TO_FOLLOW_LIMIT = 6
 
 // --- PROFILE LOADING LOGIC ---
 const log_dev_duration = (label: string, started_at: number) => {
@@ -159,6 +160,41 @@ const map_current_user = (
 	}
 }
 
+const load_who_to_follow = async (viewer_id: string | undefined, profile_id: string) => {
+	if (!viewer_id) return []
+
+	const current_following = await db
+		.select({ id: follow.followingId })
+		.from(follow)
+		.where(eq(follow.followerId, viewer_id))
+	const following_ids = current_following.map((entry) => entry.id)
+	const suggestion_conditions = [
+		sql`${userTable.id} != ${viewer_id}`,
+		sql`${userTable.id} != ${profile_id}`,
+		sql`${userTable.username} is not null`
+	]
+
+	if (following_ids.length > 0) {
+		suggestion_conditions.push(notInArray(userTable.id, following_ids))
+	}
+
+	const suggestions = await db.query.user.findMany({
+		where: and(...suggestion_conditions),
+		orderBy: [desc(userTable.createdAt)],
+		limit: WHO_TO_FOLLOW_LIMIT
+	})
+
+	return suggestions.map(
+		(suggested_user): SideNavUser => ({
+			id: suggested_user.id,
+			name: suggested_user.name,
+			handle: suggested_user.username!,
+			avatar_url: suggested_user.image || `https://i.pravatar.cc/150?u=${suggested_user.id}`,
+			is_following: false
+		})
+	)
+}
+
 const map_profile_data = (
 	user: {
 		id: string
@@ -200,6 +236,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const is_owner = viewer?.id === profile_user.id
 	const { stats: v_stats, is_following } = await load_viewer_context(viewer, profile_user.id)
+	const who_to_follow = await load_who_to_follow(viewer?.id, profile_user.id)
 
 	const posts_raw = await load_profile_posts(profile_user.id)
 	const liked_ids = await load_viewer_likes(
@@ -221,7 +258,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		is_following,
 		profile: map_profile_data(profile_user, profile_stats),
 		posts: posts_raw.map((entry) => map_post_for_frontend(entry, liked_ids)),
-		trending
+		trending,
+		who_to_follow
 	}
 }
 

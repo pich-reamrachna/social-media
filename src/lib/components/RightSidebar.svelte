@@ -3,6 +3,7 @@
 	import { fly } from 'svelte/transition'
 	import SearchDropdown from '$lib/components/SearchDropdown.svelte'
 
+	import { SvelteSet } from 'svelte/reactivity'
 	import { type FollowUser, type TrendingItem } from '$lib/types'
 
 	const {
@@ -29,16 +30,17 @@
 
 	let trending_limit = $state(3)
 	let show_more_count = $state(3)
-	let who_to_follow_list = $state<FollowUser[]>([])
-	let shown_ids = $state(new Set<string>())
-	let is_refreshing = $state(false)
+	const recently_followed = new SvelteSet<string>()
+	const dismissed_users = new SvelteSet<string>()
 	const follow_pending = $state<Record<string, boolean>>({})
+	const FOLLOW_CONFIRMATION_DURATION_MS = 900
 
-	$effect(() => {
-		const filtered = who_to_follow.filter((u: FollowUser) => !u.is_following)
-		who_to_follow_list = filtered
-		shown_ids = new Set(filtered.map((u: FollowUser) => u.id))
-	})
+	const who_to_follow_list = $derived.by(() =>
+		who_to_follow.filter(
+			(u: FollowUser) =>
+				(!u.is_following || recently_followed.has(u.id)) && !dismissed_users.has(u.id)
+		)
+	)
 
 	const toggle_trending_limit = () => {
 		trending_limit =
@@ -53,31 +55,19 @@
 	}
 
 	async function handle_follow(user_id: string) {
-		if (follow_pending[user_id]) return
+		if (follow_pending[user_id] || recently_followed.has(user_id)) return
 		follow_pending[user_id] = true
-		shown_ids = new Set([...shown_ids, user_id])
-		who_to_follow_list = who_to_follow_list.filter((u) => u.id !== user_id)
 		try {
 			await on_toggle_follow?.(user_id)
+			recently_followed.add(user_id)
+			setTimeout(() => {
+				recently_followed.delete(user_id)
+				dismissed_users.add(user_id)
+			}, FOLLOW_CONFIRMATION_DURATION_MS)
+		} catch {
+			recently_followed.delete(user_id)
 		} finally {
 			follow_pending[user_id] = false
-		}
-	}
-
-	async function refresh_suggestions() {
-		if (is_refreshing) return
-		is_refreshing = true
-		try {
-			const exclude = [...shown_ids].join(',')
-			const response = await fetch(`/api/suggestions?exclude=${encodeURIComponent(exclude)}`)
-			if (!response.ok) return
-			const data = (await response.json()) as { users: FollowUser[] }
-			if (data.users.length > 0) {
-				who_to_follow_list = [...who_to_follow_list, ...data.users]
-				shown_ids = new Set([...shown_ids, ...data.users.map((u) => u.id)])
-			}
-		} finally {
-			is_refreshing = false
 		}
 	}
 </script>
@@ -135,11 +125,20 @@
 							</div>
 						</button>
 						<button
+							type="button"
 							class="follow-btn"
-							disabled={follow_pending[user.id]}
+							class:follow-btn-active={recently_followed.has(user.id)}
+							disabled={follow_pending[user.id] || recently_followed.has(user.id)}
+							aria-busy={follow_pending[user.id]}
 							onclick={() => handle_follow(user.id)}
 						>
-							Follow
+							{#if follow_pending[user.id]}
+								Following...
+							{:else if recently_followed.has(user.id)}
+								Following
+							{:else}
+								Follow
+							{/if}
 						</button>
 					</li>
 				{/each}
@@ -150,11 +149,8 @@
 				</button>
 			{/if}
 		{:else}
-			<p class="no-suggestions-text">You've followed everyone here.</p>
+			<p class="no-suggestions-text">No more suggestions for now.</p>
 		{/if}
-		<button class="show-more-btn" disabled={is_refreshing} onclick={refresh_suggestions}>
-			{is_refreshing ? 'Finding people...' : 'Find more people'}
-		</button>
 	</div>
 
 	{#if is_footer_visible}

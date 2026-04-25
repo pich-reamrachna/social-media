@@ -169,9 +169,17 @@
 	justify-content: center;
 }
 
-.follow-btn:hover {
+.follow-btn:not(:disabled):hover {
 	background-color: #f3f4f6;
 	color: #0d0d0d;
+}
+
+.follow-btn:disabled {
+	border-color: #2f3336;
+	background: #16181c;
+	color: #71767b;
+	cursor: not-allowed;
+	opacity: 0.8;
 }
 
 .follow-btn-active {
@@ -179,7 +187,23 @@
 	color: #f3f4f6;
 }
 
-.follow-btn-active:hover {
+.follow-btn.follow-btn-active:disabled {
+	border-color: #f3f4f6;
+	background: #f3f4f6;
+	color: #0d0d0d;
+	cursor: default;
+	opacity: 1;
+}
+
+.follow-btn.follow-btn-pending:disabled {
+	border-color: #2f3336;
+	background: #16181c;
+	color: #71767b;
+	cursor: not-allowed;
+	opacity: 0.8;
+}
+
+.follow-btn-active:not(:disabled):hover {
 	background: rgba(244, 63, 94, 0.1);
 	border-color: #f43f5e;
 	color: #f43f5e;
@@ -189,11 +213,11 @@
 	display: none;
 }
 
-.follow-btn-active:hover .follow-text {
+.follow-btn-active:not(:disabled):hover .follow-text {
 	display: none;
 }
 
-.follow-btn-active:hover .unfollow-text {
+.follow-btn-active:not(:disabled):hover .unfollow-text {
 	display: inline;
 }
 
