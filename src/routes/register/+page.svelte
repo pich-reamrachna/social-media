@@ -48,33 +48,31 @@
 			return
 		}
 
+		const errors: string[] = []
+
 		if (value.length < MIN_PASSWORD_LENGTH) {
-			password_status = 'invalid'
-			password_message = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
-			return
+			errors.push(`be at least ${MIN_PASSWORD_LENGTH} characters`)
 		}
 
-		if (!/[a-z]/.test(password)) {
-			password_status = 'invalid'
-			password_message = 'Password must contain one lowercase letter'
-			return
+		if (!/[a-z]/.test(value)) {
+			errors.push('contain lowercase')
 		}
 
-		if (!/[A-Z]/.test(password)) {
-			password_status = 'invalid'
-			password_message = 'Password must contain one uppercase letter'
-			return
+		if (!/[A-Z]/.test(value)) {
+			errors.push('contain uppercase')
 		}
 
-		if (!/\d/.test(password)) {
-			password_status = 'invalid'
-			password_message = 'Password must contain one number'
-			return
+		if (!/\d/.test(value)) {
+			errors.push('contain a number')
 		}
 
-		if (!/[^A-Za-z0-9]/.test(password)) {
+		if (!/[^A-Za-z0-9]/.test(value)) {
+			errors.push('contain a symbol')
+		}
+
+		if (errors.length > 0) {
 			password_status = 'invalid'
-			password_message = 'Password must contain one special character'
+			password_message = `Password must ${errors.join(', ')}`
 			return
 		}
 
