@@ -95,7 +95,7 @@
 					is_signing_in = true
 				}}
 			>
-				{#if data.verification_sent}
+				{#if data.verification_sent && !form}
 					<p
 						class="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
 					>
