@@ -12,6 +12,7 @@
 
 	import type { PageData } from './$types'
 	import { type SideNavUser, type ProfilePost } from '$lib/types'
+	import { MAX_POST_LENGTH } from '$lib/constants/post'
 	const {
 		data
 	}: {
@@ -60,8 +61,6 @@
 		visible: false
 	})
 
-	// Character limit constants
-	const MAX_POST_LENGTH = 280
 	const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 	const ALLOWED_IMAGE_MIME_TYPES = new Set([
 		'image/jpeg',
@@ -603,6 +602,7 @@
 				aria-labelledby="discard-title"
 				tabindex="-1"
 				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => e.stopPropagation()}
 			>
 				<h2 id="discard-title" class="discard-title">Discard post?</h2>
 				<p class="discard-body">Your draft and any attached image will be lost.</p>

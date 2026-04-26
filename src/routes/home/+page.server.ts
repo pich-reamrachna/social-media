@@ -8,7 +8,7 @@ import {
 	get_rate_limit_error,
 	get_rate_limit_subject
 } from '$lib/server/rate-limit'
-import { FEED_LIMIT } from '$lib/constants/post'
+import { MAX_POST_LENGTH, FEED_LIMIT } from '$lib/constants/post'
 import { fail, redirect } from '@sveltejs/kit'
 import { desc, and, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import type { PageServerLoad, Actions } from './$types'
@@ -42,9 +42,9 @@ type ValidatedImageUpload = {
 const get_post_payload = (form_data: FormData) => {
 	const content = form_data.get('content')
 	const image = form_data.get('image')
-	const trimmed_content = typeof content === 'string' ? content.trim() : ''
+	const trimmed_content = typeof content === 'string' ? content.replace(/\r\n/g, '\n').trim() : ''
 
-	if (trimmed_content.length > 280) {
+	if (trimmed_content.length > MAX_POST_LENGTH) {
 		return { error: { status: 400, message: 'Post is too long' } }
 	}
 

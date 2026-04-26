@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
+	import PostModal from './PostModal.svelte'
 
 	const {
 		name,
@@ -40,9 +41,46 @@
 		if (diff < 604800) return `${Math.floor(diff / 86400)}d`
 		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 	}
+
+	let is_modal_open = $state(false)
+	let is_expanded = $state(false)
+	let is_truncatable = $state(false)
+	let content_el: HTMLParagraphElement | undefined = $state()
+
+	$effect(() => {
+		if (!content_el) return
+		is_truncatable = content_el.scrollHeight > content_el.clientHeight
+	})
+
+	function handle_article_click(e: MouseEvent) {
+		if ((e.target as HTMLElement).closest('a, button')) return
+		is_modal_open = true
+	}
 </script>
 
-<article class="cursor-pointer border-b border-[#1f1f1f] p-5 transition-colors hover:bg-white/5">
+{#if is_modal_open}
+	<PostModal
+		{name}
+		{handle}
+		{avatar_url}
+		{content}
+		{images}
+		{likes}
+		{timestamp}
+		{is_liked}
+		{on_like}
+		on_close={() => {
+			is_modal_open = false
+		}}
+	/>
+{/if}
+
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<article
+	class="cursor-pointer border-b border-[#1f1f1f] p-5 transition-colors hover:bg-white/5"
+	onclick={handle_article_click}
+>
 	<div class="mb-3 flex items-center gap-3">
 		<a
 			href={resolve(`/profile/${handle}`)}
@@ -74,11 +112,27 @@
 		</div>
 	</div>
 
-	<p
-		class="mb-3.5 ml-0 text-[0.9375rem] leading-relaxed break-words whitespace-pre-wrap text-[#e5e7eb] sm:ml-0"
-	>
-		{content}
-	</p>
+	<div class="mb-3.5">
+		<p
+			bind:this={content_el}
+			class="ml-0 text-[0.9375rem] leading-relaxed wrap-break-word whitespace-pre-wrap text-[#e5e7eb] sm:ml-0 {!is_expanded
+				? 'line-clamp-4'
+				: ''}"
+		>
+			{content}
+		</p>
+		{#if is_truncatable}
+			<button
+				class="mt-1 cursor-pointer border-none bg-transparent p-0 text-sm font-semibold text-[#f43f5e] transition-colors hover:text-[#f3f4f6]"
+				onclick={(e) => {
+					e.stopPropagation()
+					is_expanded = !is_expanded
+				}}
+			>
+				{is_expanded ? 'Show less' : 'Show more'}
+			</button>
+		{/if}
+	</div>
 
 	{#if images.length === 1}
 		<div class="mb-2 overflow-hidden">
