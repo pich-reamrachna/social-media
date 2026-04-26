@@ -8,7 +8,7 @@ export type ProfilePost = {
 	}
 	content: string
 	images: string[]
-	timestamp: Date
+	timestamp: Date | string
 	is_liked_by_user: boolean
 	stats: {
 		likes: number

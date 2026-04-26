@@ -2,7 +2,7 @@
 	import { deserialize } from '$app/forms'
 	import { goto } from '$app/navigation'
 	import { resolve } from '$app/paths'
-	import { onDestroy } from 'svelte'
+	import { onDestroy, untrack } from 'svelte'
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import RightSidebar from '$lib/components/RightSidebar.svelte'
@@ -11,6 +11,7 @@
 
 	import type { PageData } from './$types'
 	import { type SideNavUser, type ProfileData, type ProfilePost } from '$lib/types'
+	import { PROFILE_POSTS_LIMIT } from '$lib/constants/post'
 
 	const {
 		data
@@ -32,8 +33,12 @@
 	let active_tab = $state<'Posts' | 'media' | 'liked posts'>('Posts')
 	let is_settings_open = $state(false)
 	let profile_posts = $state<ProfilePost[]>([])
+	let has_more_posts = $state(false)
+	let is_loading_more_posts = $state(false)
 	let profile_liked_posts = $state<ProfilePost[]>([])
+	let has_more_liked = $state(false)
 	let is_liked_posts_loading = $state(false)
+	let liked_next_cursor = $state<string | undefined>(undefined)
 	let has_loaded_liked_posts = $state(false)
 	let liked_posts = $state<Record<string, boolean>>({})
 	let like_count_override = $state<Record<string, number>>({})
@@ -69,9 +74,13 @@
 
 	$effect(() => {
 		profile_posts = [...data.posts]
+		has_more_posts = data.posts.length >= PROFILE_POSTS_LIMIT
+		is_loading_more_posts = false
 		profile_liked_posts = []
-		has_loaded_liked_posts = false
+		has_more_liked = false
 		is_liked_posts_loading = false
+		liked_next_cursor = undefined
+		has_loaded_liked_posts = false
 		liked_posts = {}
 		like_count_override = {}
 		is_profile_following = data.is_following
@@ -79,6 +88,22 @@
 		if (data.profile.avatar_url === avatar_url_at_save) is_avatar_updating = false
 		if (data.profile.banner_url === banner_url_at_save) is_banner_updating = false
 		is_bio_updating = false
+	})
+
+	$effect(() => {
+		function on_scroll() {
+			const remaining = document.documentElement.scrollHeight - window.scrollY - window.innerHeight
+			if (remaining < 400) {
+				if (active_tab === 'Posts' || active_tab === 'media') {
+					load_more_posts()
+				} else if (active_tab === 'liked posts') {
+					load_more_liked()
+				}
+			}
+		}
+		window.addEventListener('scroll', on_scroll, { passive: true })
+		untrack(on_scroll)
+		return () => window.removeEventListener('scroll', on_scroll)
 	})
 
 	onDestroy(() => {
@@ -114,27 +139,58 @@
 		return profile_posts
 	})
 
-	async function ensure_liked_posts_loaded() {
-		if (has_loaded_liked_posts || is_liked_posts_loading) return
+	async function load_more_posts() {
+		if (is_loading_more_posts || !has_more_posts) return
+		const last = profile_posts[profile_posts.length - 1]
+		if (!last) return
+		is_loading_more_posts = true
+		try {
+			const cursor = new Date(last.timestamp as string | Date).toISOString()
+			const res = await fetch(
+				`/api/profile/${data.profile.handle}/posts?cursor=${encodeURIComponent(cursor)}`
+			)
+			if (!res.ok) return
+			const payload = (await res.json()) as { posts: ProfilePost[]; has_more: boolean }
+			profile_posts = [...profile_posts, ...payload.posts]
+			has_more_posts = payload.has_more
+		} catch {
+			// keep current state on error
+		} finally {
+			is_loading_more_posts = false
+		}
+	}
+
+	async function load_more_liked() {
+		if (is_liked_posts_loading) return
+		if (has_loaded_liked_posts && !has_more_liked) return
 		is_liked_posts_loading = true
 		try {
-			const response = await fetch('?/load_liked_posts_action', {
-				method: 'POST',
-				body: new FormData()
-			})
-			const result = deserialize(await response.text())
-			if (result.type === 'failure' || result.type === 'error') throw new Error()
-			const payload =
-				result.type === 'success'
-					? (result.data as { liked_posts?: ProfilePost[] } | undefined)
-					: undefined
-			profile_liked_posts = payload?.liked_posts ?? []
+			const cursor_param = liked_next_cursor
+				? `&cursor=${encodeURIComponent(liked_next_cursor)}`
+				: ''
+			const res = await fetch(
+				`/api/profile/${data.profile.handle}/liked?_=${Date.now()}${cursor_param}`
+			)
+			if (!res.ok) throw new Error()
+			const payload = (await res.json()) as {
+				posts: ProfilePost[]
+				has_more: boolean
+				next_cursor: string | undefined
+			}
+			profile_liked_posts = [...profile_liked_posts, ...payload.posts]
+			has_more_liked = payload.has_more
+			liked_next_cursor = payload.next_cursor
 			has_loaded_liked_posts = true
 		} catch {
-			profile_liked_posts = []
+			profile_liked_posts = has_loaded_liked_posts ? profile_liked_posts : []
 		} finally {
 			is_liked_posts_loading = false
 		}
+	}
+
+	async function ensure_liked_posts_loaded() {
+		if (has_loaded_liked_posts || is_liked_posts_loading) return
+		await load_more_liked()
 	}
 
 	function select_tab(tab: 'Posts' | 'media' | 'liked posts') {
@@ -480,7 +536,7 @@
 		</nav>
 
 		<div>
-			{#if active_tab === 'liked posts' && is_liked_posts_loading}
+			{#if active_tab === 'liked posts' && is_liked_posts_loading && profile_liked_posts.length === 0}
 				{#each [0, 1, 2] as i (i)}
 					<div class="skeleton-post">
 						<div class="skeleton-post-header">
@@ -515,9 +571,63 @@
 						on_like={() => toggle_like(post.id)}
 					/>
 				{/each}
+
+				{#if is_loading_more_posts && (active_tab === 'Posts' || active_tab === 'media')}
+					{#each [0, 1, 2] as i (i)}
+						<div class="skeleton-post">
+							<div class="skeleton-post-header">
+								<div class="skeleton skeleton-avatar"></div>
+								<div class="skeleton-meta">
+									<div class="skeleton skeleton-name"></div>
+									<div class="skeleton skeleton-handle"></div>
+								</div>
+							</div>
+							<div class="skeleton-body">
+								<div class="skeleton skeleton-line"></div>
+								<div class="skeleton skeleton-line-med"></div>
+								<div class="skeleton skeleton-line-short"></div>
+							</div>
+							<div class="skeleton-actions">
+								<div class="skeleton skeleton-action"></div>
+								<div class="skeleton skeleton-action"></div>
+							</div>
+						</div>
+					{/each}
+				{/if}
+
+				{#if is_liked_posts_loading && has_loaded_liked_posts && active_tab === 'liked posts'}
+					{#each [0, 1, 2] as i (i)}
+						<div class="skeleton-post">
+							<div class="skeleton-post-header">
+								<div class="skeleton skeleton-avatar"></div>
+								<div class="skeleton-meta">
+									<div class="skeleton skeleton-name"></div>
+									<div class="skeleton skeleton-handle"></div>
+								</div>
+							</div>
+							<div class="skeleton-body">
+								<div class="skeleton skeleton-line"></div>
+								<div class="skeleton skeleton-line-med"></div>
+								<div class="skeleton skeleton-line-short"></div>
+							</div>
+							<div class="skeleton-actions">
+								<div class="skeleton skeleton-action"></div>
+								<div class="skeleton skeleton-action"></div>
+							</div>
+						</div>
+					{/each}
+				{/if}
+
+				{#if (active_tab === 'Posts' || active_tab === 'media') && !is_loading_more_posts && !has_more_posts && profile_posts.length > 0}
+					<div class="feed-end-message">You're all caught up</div>
+				{/if}
+
+				{#if active_tab === 'liked posts' && has_loaded_liked_posts && !is_liked_posts_loading && !has_more_liked && profile_liked_posts.length > 0}
+					<div class="feed-end-message">You're all caught up</div>
+				{/if}
 			{/if}
 
-			{#if !is_liked_posts_loading && displayed_posts.length === 0}
+			{#if displayed_posts.length === 0 && !is_loading_more_posts && !(active_tab === 'liked posts' && (is_liked_posts_loading || !has_loaded_liked_posts))}
 				<div class="p-10 text-center text-[#6b7280]">
 					<p>No posts found here.</p>
 				</div>
