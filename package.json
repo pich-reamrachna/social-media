@@ -14,7 +14,8 @@
 	"pnpm": {
 		"onlyBuiltDependencies": [
 			"esbuild",
-			"lefthook"
+			"lefthook",
+			"sharp"
 		],
 		"ignoredBuiltDependencies": [
 			"@prisma/client",
@@ -93,6 +94,7 @@
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/node": "^22",
+		"@types/sharp": "^0.32.0",
 		"better-auth": "1.4.22",
 		"cspell": "^9.7.0",
 		"drizzle-kit": "^0.31.8",
@@ -123,6 +125,7 @@
 	"dependencies": {
 		"@better-auth/infra": "^0.1.13",
 		"@better-auth/sso": "1.4.22",
-		"cloudinary": "^2.9.0"
+		"cloudinary": "^2.9.0",
+		"sharp": "^0.34.5"
 	}
 }

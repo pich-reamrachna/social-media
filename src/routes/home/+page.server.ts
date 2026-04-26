@@ -19,7 +19,15 @@ const CREATE_POST_LIMIT = { limit: 5, windowMs: 60_000 }
 const TOGGLE_LIKE_LIMIT = { limit: 30, windowMs: 60_000 }
 const TOGGLE_FOLLOW_LIMIT = { limit: 15, windowMs: 60_000 }
 const WHO_TO_FOLLOW_LIMIT = 6
-const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+	'image/jpeg',
+	'image/png',
+	'image/gif',
+	'image/webp',
+	'image/heic',
+	'image/heif'
+])
+const HEIF_MIME_TYPES = new Set(['image/heic', 'image/heif'])
 
 type UploadedPostImage = {
 	url: string
@@ -83,11 +91,32 @@ const is_webp = (buffer: Buffer) =>
 	buffer.subarray(8, 12).toString('ascii') === 'WEBP' &&
 	['VP8 ', 'VP8L', 'VP8X'].includes(buffer.subarray(12, 16).toString('ascii'))
 
+const HEIC_BRANDS = new Set(['heic', 'heis', 'hevc', 'hevx', 'heim', 'heix'])
+const HEIF_BRANDS = new Set(['mif1', 'msf1'])
+
+const get_heif_brand = (buffer: Buffer): string | undefined => {
+	if (buffer.length < 12) return undefined
+	if (buffer.subarray(4, 8).toString('ascii') !== 'ftyp') return undefined
+	return buffer.subarray(8, 12).toString('ascii')
+}
+
+const is_heic = (buffer: Buffer) => {
+	const brand = get_heif_brand(buffer)
+	return brand !== undefined && HEIC_BRANDS.has(brand)
+}
+
+const is_heif = (buffer: Buffer) => {
+	const brand = get_heif_brand(buffer)
+	return brand !== undefined && HEIF_BRANDS.has(brand)
+}
+
 const get_image_mime_type = (buffer: Buffer) => {
 	if (is_png(buffer)) return 'image/png'
 	if (is_jpeg(buffer)) return 'image/jpeg'
 	if (is_gif(buffer)) return 'image/gif'
 	if (is_webp(buffer)) return 'image/webp'
+	if (is_heic(buffer)) return 'image/heic'
+	if (is_heif(buffer)) return 'image/heif'
 
 	return undefined
 }
@@ -104,17 +133,25 @@ const validate_post_image = async (
 	const mime_type = get_image_mime_type(buffer)
 
 	if (!mime_type || !ALLOWED_IMAGE_MIME_TYPES.has(mime_type)) {
-		return { error: 'Only JPEG, PNG, GIF, and WebP images are supported' }
+		return { error: 'Only JPEG, PNG, GIF, WebP, and HEIC/HEIF images are supported' }
 	}
 
-	if (file.type && file.type !== mime_type) {
+	// heic and heif are interchangeable from the browser's perspective
+	const type_mismatch =
+		file.type &&
+		file.type !== mime_type &&
+		!(HEIF_MIME_TYPES.has(file.type) && HEIF_MIME_TYPES.has(mime_type))
+	if (type_mismatch) {
 		return { error: 'Image type does not match the uploaded file contents' }
 	}
 
-	return {
-		buffer,
-		mime_type
+	if (HEIF_MIME_TYPES.has(mime_type)) {
+		const { default: sharp } = await import('sharp')
+		const jpeg_buffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer()
+		return { buffer: jpeg_buffer, mime_type: 'image/jpeg' }
 	}
+
+	return { buffer, mime_type }
 }
 
 const upload_post_image = async (image: ValidatedImageUpload) => {
@@ -316,17 +353,26 @@ export const actions: Actions = {
 			return fail(payload.error.status, { message: payload.error.message })
 		}
 
-		const validated_image = payload.image_file
-			? await validate_post_image(payload.image_file)
-			: undefined
-		if (validated_image && 'error' in validated_image) {
-			console.warn('[createPost] image validation rejected', {
-				file_name: payload.image_file?.name,
-				file_type: payload.image_file?.type,
-				file_size: payload.image_file?.size,
-				reason: validated_image.error
-			})
-			return fail(400, { message: validated_image.error })
+		let validated_image: ValidatedImageUpload | undefined
+
+		if (payload.image_file) {
+			let validation_result: Awaited<ReturnType<typeof validate_post_image>>
+			try {
+				validation_result = await validate_post_image(payload.image_file)
+			} catch (error) {
+				console.error('[createPost] image validation threw:', error)
+				return fail(500, { message: 'Internal server error' })
+			}
+			if ('error' in validation_result) {
+				console.warn('[createPost] image validation rejected', {
+					file_name: payload.image_file.name,
+					file_type: payload.image_file.type,
+					file_size: payload.image_file.size,
+					reason: validation_result.error
+				})
+				return fail(400, { message: validation_result.error })
+			}
+			validated_image = validation_result
 		}
 
 		let uploaded_image: Awaited<ReturnType<typeof get_post_image_url>>
