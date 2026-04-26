@@ -17,12 +17,19 @@ export const GET: RequestHandler = async ({ url, params, locals }) => {
 	})
 	if (!target_user) return new Response('Not Found', { status: 404 })
 
-	const cursor = url.searchParams.get('cursor')
+	const cursor_raw = url.searchParams.get('cursor')
+	let cursor_date: Date | undefined
+	if (cursor_raw) {
+		cursor_date = new Date(cursor_raw)
+		if (Number.isNaN(cursor_date.getTime())) {
+			return new Response('Invalid cursor', { status: 400 })
+		}
+	}
 
 	const user_likes = await db.query.like.findMany({
 		where: and(
 			eq(like.userId, target_user.id),
-			cursor ? lt(like.createdAt, new Date(cursor)) : undefined
+			cursor_date ? lt(like.createdAt, cursor_date) : undefined
 		),
 		with: { post: { with: { author: true } } },
 		orderBy: [desc(like.createdAt)],

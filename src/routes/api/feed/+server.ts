@@ -10,11 +10,18 @@ import type { ProfilePost } from '$lib/types'
 export const GET: RequestHandler = async ({ url, locals }) => {
 	if (!locals.user) return new Response('Unauthorized', { status: 401 })
 
-	const cursor = url.searchParams.get('cursor')
+	const cursor_raw = url.searchParams.get('cursor')
+	let cursor_date: Date | undefined
+	if (cursor_raw) {
+		cursor_date = new Date(cursor_raw)
+		if (Number.isNaN(cursor_date.getTime())) {
+			return new Response('Invalid cursor', { status: 400 })
+		}
+	}
 
 	const posts_raw = await db.query.post.findMany({
 		with: { author: true },
-		where: cursor ? lt(post.createdAt, new Date(cursor)) : undefined,
+		where: cursor_date ? lt(post.createdAt, cursor_date) : undefined,
 		orderBy: [desc(post.createdAt)],
 		limit: FEED_LIMIT + 1
 	})
@@ -38,7 +45,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		author: {
 			id: p.author.id,
 			name: p.author.name,
-			handle: p.author.username ?? p.author.email?.split('@')[0] ?? 'user',
+			handle: p.author.username || 'user',
 			avatar_url: p.author.image || '/profile.png'
 		},
 		content: p.content,

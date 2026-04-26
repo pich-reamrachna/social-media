@@ -17,13 +17,20 @@ export const GET: RequestHandler = async ({ url, params, locals }) => {
 	})
 	if (!target_user) return new Response('Not Found', { status: 404 })
 
-	const cursor = url.searchParams.get('cursor')
+	const cursor_raw = url.searchParams.get('cursor')
+	let cursor_date: Date | undefined
+	if (cursor_raw) {
+		cursor_date = new Date(cursor_raw)
+		if (Number.isNaN(cursor_date.getTime())) {
+			return new Response('Invalid cursor', { status: 400 })
+		}
+	}
 
 	const posts_raw = await db.query.post.findMany({
 		with: { author: true },
 		where: and(
 			eq(post.userId, target_user.id),
-			cursor ? lt(post.createdAt, new Date(cursor)) : undefined
+			cursor_date ? lt(post.createdAt, cursor_date) : undefined
 		),
 		orderBy: [desc(post.createdAt)],
 		limit: PROFILE_POSTS_LIMIT + 1
