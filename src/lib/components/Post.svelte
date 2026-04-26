@@ -52,13 +52,14 @@
 		is_truncatable = content_el.scrollHeight > content_el.clientHeight
 	})
 
-	function handle_article_click(e: MouseEvent) {
-		if ((e.target as HTMLElement).closest('a, button')) return
+	function open_image_modal(e: MouseEvent) {
+		e.stopPropagation()
+		if (!images.length) return
 		is_modal_open = true
 	}
 </script>
 
-{#if is_modal_open}
+{#if is_modal_open && images.length > 0}
 	<PostModal
 		{name}
 		{handle}
@@ -75,12 +76,7 @@
 	/>
 {/if}
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<article
-	class="cursor-pointer border-b border-[#1f1f1f] p-5 transition-colors hover:bg-white/5"
-	onclick={handle_article_click}
->
+<article class="border-b border-[#1f1f1f] p-5 transition-colors hover:bg-white/5">
 	<div class="mb-3 flex items-center gap-3">
 		<a
 			href={resolve(`/profile/${handle}`)}
@@ -136,12 +132,19 @@
 
 	{#if images.length === 1}
 		<div class="mb-2 overflow-hidden">
-			<img
-				src={images[0]}
-				alt="Post attachment"
-				class="mx-auto block max-h-100 max-w-full rounded-xl"
-				loading="lazy"
-			/>
+			<button
+				type="button"
+				class="mx-auto block w-full cursor-pointer border-none bg-transparent p-0"
+				aria-label="Open post image"
+				onclick={open_image_modal}
+			>
+				<img
+					src={images[0]}
+					alt="Post attachment"
+					class="mx-auto block max-h-100 max-w-full rounded-xl"
+					loading="lazy"
+				/>
+			</button>
 		</div>
 	{/if}
 
