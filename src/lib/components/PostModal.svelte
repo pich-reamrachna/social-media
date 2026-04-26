@@ -56,10 +56,26 @@
 		}
 	})
 
-	$effect(() => {
+	function update_mobile_truncation() {
 		const el = content_mobile_el
 		if (!el) return
 		is_truncatable_mobile = el.scrollHeight > el.clientHeight
+	}
+
+	$effect(() => {
+		const el = content_mobile_el
+		if (!el) return
+
+		update_mobile_truncation()
+
+		const observer = new ResizeObserver(update_mobile_truncation)
+		observer.observe(el)
+		window.addEventListener('resize', update_mobile_truncation)
+
+		return () => {
+			observer.disconnect()
+			window.removeEventListener('resize', update_mobile_truncation)
+		}
 	})
 </script>
 
