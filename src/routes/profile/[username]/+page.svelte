@@ -453,18 +453,19 @@
 					</button>
 				{:else}
 					<button
-						class="follow-btn"
-						class:follow-btn-active={is_profile_following}
-						class:follow-btn-pending={is_follow_pending}
+						class="group flex w-28 cursor-pointer items-center justify-center rounded-full border px-4 py-1.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50
+    					{is_profile_following
+							? 'border-[#333] bg-transparent text-white hover:border-red-500 hover:bg-red-500/10 hover:text-red-500'
+							: 'border-[#f3f4f6] bg-[#f3f4f6] text-[#0d0d0d] hover:bg-white/90'}"
 						disabled={is_follow_pending}
 						aria-busy={is_follow_pending}
 						onclick={toggle_profile_follow}
 					>
 						{#if is_follow_pending}
-							{is_profile_following ? 'Unfollowing...' : 'Following...'}
+							{is_profile_following ? 'Unfollowing' : 'Following'}
 						{:else if is_profile_following}
-							<span class="follow-text">Following</span>
-							<span class="unfollow-text">Unfollow</span>
+							<span class="block group-hover:hidden">Following</span>
+							<span class="hidden group-hover:block">Unfollow</span>
 						{:else}
 							<span>Follow</span>
 						{/if}
