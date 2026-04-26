@@ -59,7 +59,7 @@ export const auth = betterAuth({
 		sendPasswordResetToken: async ({ user, url }: { user: { email: string }; url: string }) => {
 			console.info('[auth] sendPasswordResetToken: recipient=%s', user.email)
 
-			send_email({
+			await send_email({
 				to: user.email,
 				subject: 'Reset your Y password',
 				text: `Reset your Y password by opening this link: ${url}`,
@@ -83,7 +83,7 @@ export const auth = betterAuth({
 		sendOnSignIn: true,
 		autoSignInAfterVerification: true,
 		sendVerificationEmail: async ({ user, url }) => {
-			void send_email({
+			await send_email({
 				to: user.email,
 				subject: 'Verify your email for Y',
 				text: `Verify your email for Y by opening this link: ${url}`,
@@ -99,7 +99,7 @@ export const auth = betterAuth({
 						<p>If you did not create this account, you can ignore this email.</p>
 					</div>
 				`
-			})
+			}).catch((e) => console.error('[auth] sendVerificationEmail failed:', e))
 		}
 	},
 	session: {
