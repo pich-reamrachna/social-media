@@ -30,6 +30,8 @@
 	let is_expanded = $state(false)
 	let content_mobile_el: HTMLParagraphElement | undefined = $state()
 	let is_truncatable_mobile = $state(false)
+	let dialog_el: HTMLElement | undefined = $state()
+	let previously_focused: HTMLElement | undefined = undefined
 	const has_image = $derived(images.length > 0)
 
 	function format_count(n: number): string {
@@ -57,10 +59,67 @@
 	})
 
 	function update_mobile_truncation() {
+		if (is_expanded) return
 		const el = content_mobile_el
 		if (!el) return
 		is_truncatable_mobile = el.scrollHeight > el.clientHeight
 	}
+
+	function get_focusable_elements(root: HTMLElement): HTMLElement[] {
+		return Array.from(
+			root.querySelectorAll<HTMLElement>(
+				'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+			)
+		).filter((el) => !el.hasAttribute('disabled') && Boolean(el.offsetParent))
+	}
+
+	function handle_keydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			event.preventDefault()
+			on_close()
+			return
+		}
+
+		if (event.key !== 'Tab') return
+
+		const root = dialog_el
+		if (!root) return
+
+		const focusable = get_focusable_elements(root)
+		if (!focusable.length) return
+
+		const first = focusable[0]!
+		const last = focusable[focusable.length - 1]!
+		const active = document.activeElement as HTMLElement | null
+
+		if (event.shiftKey && active === first) {
+			event.preventDefault()
+			last.focus()
+			return
+		}
+
+		if (!event.shiftKey && active === last) {
+			event.preventDefault()
+			first.focus()
+		}
+	}
+
+	$effect(() => {
+		const dialog = dialog_el
+		if (!dialog) return
+
+		previously_focused =
+			document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+		const focusable = get_focusable_elements(dialog)
+		;(focusable[0] ?? dialog).focus()
+
+		return () => {
+			if (previously_focused) {
+				previously_focused.focus()
+				previously_focused = undefined
+			}
+		}
+	})
 
 	$effect(() => {
 		const el = content_mobile_el
@@ -85,6 +144,8 @@
 	aria-modal="true"
 	aria-label="Post detail"
 	tabindex="-1"
+	bind:this={dialog_el}
+	onkeydown={handle_keydown}
 >
 	<!-- X button is the only way to close -->
 	<button class="post-modal-close" onclick={on_close} aria-label="Close">

@@ -141,7 +141,7 @@
 				<img
 					src={images[0]}
 					alt="Post attachment"
-					class="mx-auto block max-h-100 max-w-full rounded-xl"
+					class="mx-auto block max-h-96 max-w-full rounded-xl"
 					loading="lazy"
 				/>
 			</button>

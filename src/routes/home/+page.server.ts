@@ -42,7 +42,7 @@ type ValidatedImageUpload = {
 const get_post_payload = (form_data: FormData) => {
 	const content = form_data.get('content')
 	const image = form_data.get('image')
-	const trimmed_content = typeof content === 'string' ? content.replace(/\r\n/g, '\n').trim() : ''
+	const trimmed_content = typeof content === 'string' ? content.replaceAll('\r\n', '\n').trim() : ''
 
 	if (trimmed_content.length > MAX_POST_LENGTH) {
 		return { error: { status: 400, message: 'Post is too long' } }

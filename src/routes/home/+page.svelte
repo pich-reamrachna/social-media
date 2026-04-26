@@ -28,11 +28,6 @@
 	const who_to_follow = $derived(data.who_to_follow)
 	type FeedPost = ProfilePost
 
-	let active_tab = $state<'for-you' | 'following'>('for-you')
-	const home_tabs = [
-		{ id: 'for-you', label: 'For You' },
-		{ id: 'following', label: 'Following' }
-	]
 	let search_query = $state('')
 	let search_results = $state<SideNavUser[]>([])
 	let applied_keyword_search = $state('')
@@ -395,16 +390,7 @@
 
 	<main class="feed-column">
 		<div class="feed-sticky-controls">
-			<PageTopBar
-				tabs={home_tabs}
-				{active_tab}
-				on_change={(tab_id: string) => {
-					if (tab_id === 'for-you' || tab_id === 'following') {
-						active_tab = tab_id
-					}
-				}}
-				extra_class="feed-topbar-main"
-			/>
+			<PageTopBar title="For You" extra_class="feed-topbar-main" />
 			<SearchDropdown
 				extra_class="feed-search-main"
 				aria_label="Search posts"
