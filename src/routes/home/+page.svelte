@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
 	import { enhance } from '$app/forms'
-	import { goto } from '$app/navigation'
+	import { goto, beforeNavigate } from '$app/navigation'
 	import SideNav from '$lib/components/SideNav.svelte'
 	import Post from '$lib/components/Post.svelte'
 	import RightSidebar from '$lib/components/RightSidebar.svelte'
@@ -47,6 +47,9 @@
 
 	let is_posting = $state(false)
 	let is_error_banner_visible = $state(false)
+	let is_discard_dialog_open = $state(false)
+	let pending_navigation_url = $state<string | undefined>(undefined)
+	let discard_keep_btn = $state<HTMLButtonElement | undefined>(undefined)
 	let toast = $state<{
 		type: 'success' | 'error' | 'warning' | 'loading'
 		message: string
@@ -81,6 +84,7 @@
 	let remaining_chars = $derived(Math.max(0, MAX_POST_LENGTH - character_count))
 	// eslint-disable-next-line prefer-const
 	let is_over_limit = $derived(character_count > MAX_POST_LENGTH)
+	const has_composer_draft = $derived(post_draft.trim() !== '' || !!selected_image_preview)
 
 	async function toggle_like(post_id: string) {
 		const post = data.posts.find((p: FeedPost) => p.id === post_id)
@@ -278,6 +282,45 @@
 		if (image_input) {
 			image_input.value = ''
 		}
+	}
+
+	beforeNavigate(({ cancel, to, type }) => {
+		if (!has_composer_draft || type === 'leave') return
+		cancel()
+		pending_navigation_url = to?.url.pathname
+		is_discard_dialog_open = true
+	})
+
+	$effect(() => {
+		const handle_beforeunload = (e: BeforeUnloadEvent) => {
+			if (has_composer_draft) e.preventDefault()
+		}
+		window.addEventListener('beforeunload', handle_beforeunload)
+		return () => window.removeEventListener('beforeunload', handle_beforeunload)
+	})
+
+	$effect(() => {
+		if (!is_discard_dialog_open) return
+		discard_keep_btn?.focus()
+		const handle_keydown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') cancel_discard()
+		}
+		document.addEventListener('keydown', handle_keydown)
+		return () => document.removeEventListener('keydown', handle_keydown)
+	})
+
+	function confirm_discard() {
+		post_draft = ''
+		clear_selected_image(composer_form ?? undefined)
+		is_discard_dialog_open = false
+		const url = pending_navigation_url
+		pending_navigation_url = undefined
+		if (url) goto(resolve(url as '/'))
+	}
+
+	function cancel_discard() {
+		is_discard_dialog_open = false
+		pending_navigation_url = undefined
 	}
 </script>
 
@@ -537,4 +580,40 @@
 	<footer class="mobile-legal-footer">
 		<span>© 2026 Y.</span>
 	</footer>
+
+	{#if is_discard_dialog_open}
+		<div
+			class="discard-overlay"
+			role="presentation"
+			onclick={cancel_discard}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') cancel_discard()
+			}}
+		>
+			<div
+				class="discard-dialog"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="discard-title"
+				tabindex="-1"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<h2 id="discard-title" class="discard-title">Discard post?</h2>
+				<p class="discard-body">Your draft and any attached image will be lost.</p>
+				<div class="discard-actions">
+					<button type="button" class="discard-btn-confirm" onclick={confirm_discard}>
+						Discard
+					</button>
+					<button
+						bind:this={discard_keep_btn}
+						type="button"
+						class="discard-btn-cancel"
+						onclick={cancel_discard}
+					>
+						Keep editing
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
