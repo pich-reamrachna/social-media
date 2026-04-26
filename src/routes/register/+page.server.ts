@@ -164,7 +164,7 @@ export const actions: Actions = {
 
 			if (error.message.toLowerCase().includes('email')) {
 				const login_url = `${env.ORIGIN}/login?identifier=${encodeURIComponent(email)}`
-				send_email({
+				await send_email({
 					to: email,
 					subject: 'Your Y account already exists',
 					text: `Someone tried to create a Y account using this email, but you already have one. Sign in at: ${login_url}`,
