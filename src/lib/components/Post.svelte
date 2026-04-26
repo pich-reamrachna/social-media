@@ -49,7 +49,7 @@
 
 	$effect(() => {
 		if (!content_el) return
-		is_truncatable = content_el.scrollHeight > content_el.clientHeight
+		is_truncatable = content_el.scrollHeight > content_el.clientHeight + 1
 	})
 
 	function open_image_modal(e: MouseEvent) {
