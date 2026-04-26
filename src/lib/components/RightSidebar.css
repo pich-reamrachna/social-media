@@ -100,6 +100,9 @@
 .follow-handle {
 	font-size: 0.75rem;
 	color: #6b7280;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .follow-btn {
