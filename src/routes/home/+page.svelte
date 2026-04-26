@@ -588,7 +588,11 @@
 				aria-labelledby="discard-title"
 				tabindex="-1"
 				onclick={(e) => e.stopPropagation()}
-				onkeydown={(e) => e.stopPropagation()}
+				onkeydown={(e) => {
+					if (e.key !== 'Escape') {
+						e.stopPropagation()
+					}
+				}}
 			>
 				<h2 id="discard-title" class="discard-title">Discard post?</h2>
 				<p class="discard-body">Your draft and any attached image will be lost.</p>

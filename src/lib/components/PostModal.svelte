@@ -514,7 +514,7 @@
 	}
 	.post-modal-text {
 		white-space: pre-wrap;
-		word-break: break-words;
+		overflow-wrap: break-word;
 		font-size: 0.9375rem;
 		line-height: 1.65;
 		color: #e5e7eb;
