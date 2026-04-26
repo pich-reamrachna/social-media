@@ -302,11 +302,15 @@
 	$effect(() => {
 		if (!is_discard_dialog_open) return
 		discard_keep_btn?.focus()
+		document.body.style.overflow = 'hidden'
 		const handle_keydown = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') cancel_discard()
 		}
 		document.addEventListener('keydown', handle_keydown)
-		return () => document.removeEventListener('keydown', handle_keydown)
+		return () => {
+			document.body.style.overflow = ''
+			document.removeEventListener('keydown', handle_keydown)
+		}
 	})
 
 	function confirm_discard() {
