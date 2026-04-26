@@ -243,7 +243,10 @@
 			return
 		}
 
-		if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
+		const lower_name = file.name.toLowerCase()
+		const is_heif_by_extension =
+			file.type === '' && (lower_name.endsWith('.heic') || lower_name.endsWith('.heif'))
+		if (!is_heif_by_extension && !ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
 			clear_selected_image(composer_form ?? undefined)
 			show_toast('error', 'Only JPEG, PNG, GIF, WebP, and HEIC/HEIF images are supported')
 			return

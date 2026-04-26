@@ -94,10 +94,19 @@ const is_webp = (buffer: Buffer) =>
 const HEIC_BRANDS = new Set(['heic', 'heis', 'hevc', 'hevx', 'heim', 'heix'])
 const HEIF_BRANDS = new Set(['mif1', 'msf1'])
 
+const ALL_HEIF_BRANDS = new Set([...HEIC_BRANDS, ...HEIF_BRANDS])
+
 const get_heif_brand = (buffer: Buffer): string | undefined => {
 	if (buffer.length < 12) return undefined
 	if (buffer.subarray(4, 8).toString('ascii') !== 'ftyp') return undefined
-	return buffer.subarray(8, 12).toString('ascii')
+	const major = buffer.subarray(8, 12).toString('ascii')
+	if (ALL_HEIF_BRANDS.has(major)) return major
+	// Scan compatible_brands (bytes 16+, 4 bytes each) for a recognised brand.
+	for (let offset = 16; offset + 4 <= buffer.length; offset += 4) {
+		const brand = buffer.subarray(offset, offset + 4).toString('ascii')
+		if (ALL_HEIF_BRANDS.has(brand)) return brand
+	}
+	return undefined
 }
 
 const is_heic = (buffer: Buffer) => {
@@ -147,7 +156,7 @@ const validate_post_image = async (
 
 	if (HEIF_MIME_TYPES.has(mime_type)) {
 		const { default: sharp } = await import('sharp')
-		const jpeg_buffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer()
+		const jpeg_buffer = await sharp(buffer).autoOrient().jpeg({ quality: 90 }).toBuffer()
 		return { buffer: jpeg_buffer, mime_type: 'image/jpeg' }
 	}
 
