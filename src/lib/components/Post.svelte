@@ -81,11 +81,11 @@
 	</p>
 
 	{#if images.length === 1}
-		<div class="mb-2">
+		<div class="mb-2 overflow-hidden">
 			<img
 				src={images[0]}
 				alt="Post attachment"
-				class="block max-h-100 w-full rounded-xl border border-[#1f1f1f] object-cover"
+				class="mx-auto block max-h-100 max-w-full rounded-xl"
 				loading="lazy"
 			/>
 		</div>
