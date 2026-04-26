@@ -323,7 +323,7 @@
 						class:text-green-400={username_status === 'valid'}
 						class:text-red-400={username_status === 'error'}
 						class:text-gray-400={username_status === 'checking'}
-						class="mt-2 text-sm break-words"
+						class="mt-2 text-sm wrap-break-word"
 					>
 						{username_message}
 					</p>

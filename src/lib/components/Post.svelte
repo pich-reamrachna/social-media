@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
+	import PostModal from './PostModal.svelte'
 
 	const {
 		name,
@@ -40,9 +41,42 @@
 		if (diff < 604800) return `${Math.floor(diff / 86400)}d`
 		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 	}
+
+	let is_modal_open = $state(false)
+	let is_expanded = $state(false)
+	let is_truncatable = $state(false)
+	let content_el: HTMLParagraphElement | undefined = $state()
+
+	$effect(() => {
+		if (!content_el) return
+		is_truncatable = content_el.scrollHeight > content_el.clientHeight
+	})
+
+	function open_image_modal(e: MouseEvent) {
+		e.stopPropagation()
+		if (!images.length) return
+		is_modal_open = true
+	}
 </script>
 
-<article class="cursor-pointer border-b border-[#1f1f1f] p-5 transition-colors hover:bg-white/5">
+{#if is_modal_open && images.length > 0}
+	<PostModal
+		{name}
+		{handle}
+		{avatar_url}
+		{content}
+		{images}
+		{likes}
+		{timestamp}
+		{is_liked}
+		{on_like}
+		on_close={() => {
+			is_modal_open = false
+		}}
+	/>
+{/if}
+
+<article class="border-b border-[#1f1f1f] p-5 transition-colors hover:bg-white/5">
 	<div class="mb-3 flex items-center gap-3">
 		<a
 			href={resolve(`/profile/${handle}`)}
@@ -74,20 +108,43 @@
 		</div>
 	</div>
 
-	<p
-		class="mb-3.5 ml-0 text-[0.9375rem] leading-relaxed break-words whitespace-pre-wrap text-[#e5e7eb] sm:ml-0"
-	>
-		{content}
-	</p>
+	<div class="mb-3.5">
+		<p
+			bind:this={content_el}
+			class="ml-0 text-[0.9375rem] leading-relaxed wrap-break-word whitespace-pre-wrap text-[#e5e7eb] sm:ml-0 {!is_expanded
+				? 'line-clamp-4'
+				: ''}"
+		>
+			{content}
+		</p>
+		{#if is_truncatable}
+			<button
+				class="mt-1 cursor-pointer border-none bg-transparent p-0 text-sm font-semibold text-[#f43f5e] transition-colors hover:text-[#f3f4f6]"
+				onclick={(e) => {
+					e.stopPropagation()
+					is_expanded = !is_expanded
+				}}
+			>
+				{is_expanded ? 'Show less' : 'Show more'}
+			</button>
+		{/if}
+	</div>
 
 	{#if images.length === 1}
-		<div class="mb-2">
-			<img
-				src={images[0]}
-				alt="Post attachment"
-				class="block max-h-100 w-full rounded-xl border border-[#1f1f1f] object-cover"
-				loading="lazy"
-			/>
+		<div class="mb-2 overflow-hidden">
+			<button
+				type="button"
+				class="mx-auto block w-full cursor-pointer border-none bg-transparent p-0"
+				aria-label="Open post image"
+				onclick={open_image_modal}
+			>
+				<img
+					src={images[0]}
+					alt="Post attachment"
+					class="mx-auto block max-h-96 max-w-full rounded-xl"
+					loading="lazy"
+				/>
+			</button>
 		</div>
 	{/if}
 
