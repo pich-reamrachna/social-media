@@ -42,8 +42,8 @@
 	const liked_posts = $state<Record<string, boolean>>({})
 	const like_count_override = $state<Record<string, number>>({})
 
-	let feed_posts = $state<FeedPost[]>(data.posts)
-	let has_more = $state(data.posts.length >= FEED_LIMIT)
+	let feed_posts = $state<FeedPost[]>(untrack(() => data.posts))
+	let has_more = $state(untrack(() => data.posts.length >= FEED_LIMIT))
 	let is_loading_more = $state(false)
 
 	$effect(() => {
