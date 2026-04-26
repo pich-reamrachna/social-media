@@ -60,7 +60,14 @@
 	// Character limit constants
 	const MAX_POST_LENGTH = 280
 	const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
-	const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+	const ALLOWED_IMAGE_MIME_TYPES = new Set([
+		'image/jpeg',
+		'image/png',
+		'image/gif',
+		'image/webp',
+		'image/heic',
+		'image/heif'
+	])
 
 	function get_safe_count(count: number | string | undefined) {
 		const parsed_count = Number(count ?? 0)
@@ -236,9 +243,12 @@
 			return
 		}
 
-		if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
+		const lower_name = file.name.toLowerCase()
+		const is_heif_by_extension =
+			file.type === '' && (lower_name.endsWith('.heic') || lower_name.endsWith('.heif'))
+		if (!is_heif_by_extension && !ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
 			clear_selected_image(composer_form ?? undefined)
-			show_toast('error', 'Only JPEG, PNG, GIF, and WebP images are supported')
+			show_toast('error', 'Only JPEG, PNG, GIF, WebP, and HEIC/HEIF images are supported')
 			return
 		}
 
@@ -426,13 +436,19 @@
 					id="composer-image"
 					type="file"
 					name="image"
-					accept="image/*"
+					accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
 					class="composer-file-input"
 					onchange={handle_image_change}
 				/>
 				{#if selected_image_preview}
 					<div class="composer-image-preview">
-						<img src={selected_image_preview} alt="Selected attachment preview" />
+						<img
+							src={selected_image_preview}
+							alt="Selected attachment preview"
+							onerror={(e) => {
+								;(e.currentTarget as HTMLImageElement).style.display = 'none'
+							}}
+						/>
 						<div class="composer-image-meta">
 							<span>{selected_image_name}</span>
 							<button
