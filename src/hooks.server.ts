@@ -14,7 +14,7 @@ const SECURITY_HEADERS = {
 } as const
 
 const AUTH_ROUTES = new Set(['/login', '/register'])
-const PROTECTED_ROUTE_PREFIXES = ['/home', '/profile']
+const PROTECTED_ROUTE_PREFIXES = ['/home', '/profile', '/api']
 
 const is_protected_route = (pathname: string) =>
 	PROTECTED_ROUTE_PREFIXES.some(

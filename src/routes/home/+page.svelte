@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import { resolve } from '$app/paths'
 	import { enhance } from '$app/forms'
 	import { goto, beforeNavigate } from '$app/navigation'
@@ -12,7 +13,7 @@
 
 	import type { PageData } from './$types'
 	import { type SideNavUser, type ProfilePost } from '$lib/types'
-	import { MAX_POST_LENGTH } from '$lib/constants/post'
+	import { MAX_POST_LENGTH, FEED_LIMIT } from '$lib/constants/post'
 	const {
 		data
 	}: {
@@ -40,6 +41,39 @@
 	let selected_image_preview = $state<string | undefined>(undefined)
 	const liked_posts = $state<Record<string, boolean>>({})
 	const like_count_override = $state<Record<string, number>>({})
+
+	let feed_posts = $state<FeedPost[]>(untrack(() => data.posts))
+	let has_more = $state(untrack(() => data.posts.length >= FEED_LIMIT))
+	let is_loading_more = $state(false)
+
+	$effect(() => {
+		function on_scroll() {
+			const remaining = document.documentElement.scrollHeight - window.scrollY - window.innerHeight
+			if (remaining < 400) load_more_posts()
+		}
+		window.addEventListener('scroll', on_scroll, { passive: true })
+		untrack(on_scroll)
+		return () => window.removeEventListener('scroll', on_scroll)
+	})
+
+	async function load_more_posts() {
+		if (is_loading_more || !has_more) return
+		const last = feed_posts[feed_posts.length - 1]
+		if (!last) return
+		is_loading_more = true
+		try {
+			const cursor = new Date(last.timestamp as string | Date).toISOString()
+			const res = await fetch(`/api/feed?cursor=${encodeURIComponent(cursor)}`)
+			if (!res.ok) return
+			const payload = (await res.json()) as { posts: FeedPost[]; has_more: boolean }
+			feed_posts = [...feed_posts, ...payload.posts]
+			has_more = payload.has_more
+		} catch {
+			// user can scroll again to retry
+		} finally {
+			is_loading_more = false
+		}
+	}
 
 	let is_posting = $state(false)
 	let is_error_banner_visible = $state(false)
@@ -81,7 +115,7 @@
 	const has_composer_draft = $derived(post_draft.trim() !== '' || !!selected_image_preview)
 
 	async function toggle_like(post_id: string) {
-		const post = data.posts.find((p: FeedPost) => p.id === post_id)
+		const post = feed_posts.find((p: FeedPost) => p.id === post_id)
 		if (!post) return
 
 		const is_liked = liked_posts[post_id] ?? post.is_liked_by_user
@@ -167,9 +201,8 @@
 
 	function filter_posts() {
 		const q = applied_keyword_search.toLowerCase().trim()
-		if (!q) return data.posts
-
-		return data.posts.filter((post: FeedPost) => post.content.toLowerCase().includes(q))
+		if (!q) return feed_posts
+		return feed_posts.filter((post: FeedPost) => post.content.toLowerCase().includes(q))
 	}
 
 	function fetch_search_users(q: string) {
@@ -432,6 +465,8 @@
 					if (result.type === 'success') {
 						post_draft = ''
 						clear_selected_image(composer_form ?? undefined)
+						feed_posts = data.posts
+						has_more = data.posts.length >= FEED_LIMIT
 						show_toast('success', 'Post created!')
 					} else {
 						const failure_msg =
@@ -554,6 +589,33 @@
 						on_like={() => toggle_like(post.id)}
 					/>
 				{/each}
+			{/if}
+
+			{#if is_loading_more}
+				{#each [0, 1, 2] as i (i)}
+					<div class="skeleton-post">
+						<div class="skeleton-post-header">
+							<div class="skeleton skeleton-avatar"></div>
+							<div class="skeleton-meta">
+								<div class="skeleton skeleton-name"></div>
+								<div class="skeleton skeleton-handle"></div>
+							</div>
+						</div>
+						<div class="skeleton-body">
+							<div class="skeleton skeleton-line"></div>
+							<div class="skeleton skeleton-line-med"></div>
+							<div class="skeleton skeleton-line-short"></div>
+						</div>
+						<div class="skeleton-actions">
+							<div class="skeleton skeleton-action"></div>
+							<div class="skeleton skeleton-action"></div>
+						</div>
+					</div>
+				{/each}
+			{/if}
+
+			{#if !has_more && feed_posts.length > 0 && !is_loading_more}
+				<p class="feed-end-message">You're all caught up</p>
 			{/if}
 		</div>
 	</main>
