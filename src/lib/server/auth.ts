@@ -56,8 +56,33 @@ export const auth = betterAuth({
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: true,
-		sendPasswordResetToken: async ({ user, url }: { user: { email: string }; url: string }) => {
-			console.info('[auth] sendPasswordResetToken: recipient=%s', user.email)
+		sendResetPassword: async ({ user, url }) => {
+			if (!user.emailVerified) {
+				console.info(
+					'[auth] sendResetPassword: unverified account, sending verify-first email: recipient=%s',
+					user.email
+				)
+				await send_email({
+					to: user.email,
+					subject: 'Verify your Y account first',
+					text: 'We received a password reset request, but your Y account email has not been verified yet. Sign in to Y and we will send you a verification link to activate your account.',
+					html: `
+						<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+							<h1 style="margin-bottom: 16px;">Verify your account first</h1>
+							<p style="margin-bottom: 16px;">
+								We received a password reset request for your Y account, but your email address has not been verified yet.
+							</p>
+							<p style="margin-bottom: 24px;">
+								Please sign in to Y and we will send you a verification link to activate your account. Once verified, you can reset your password later.
+							</p>
+							<p>If you did not request this, you can safely ignore this email.</p>
+						</div>
+					`
+				}).catch((e) => console.error('[auth] sendVerifyFirst failed:', e))
+				return
+			}
+
+			console.info('[auth] sendResetPassword: recipient=%s', user.email)
 
 			await send_email({
 				to: user.email,

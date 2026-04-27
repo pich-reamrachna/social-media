@@ -196,7 +196,7 @@
 					</div>
 					<div class="mt-2 flex justify-end">
 						<a
-							href={resolve('/login')}
+							href={resolve('/forget-password')}
 							class="text-[9px] font-medium tracking-[0.22em] text-[#ff5c8d] uppercase transition-colors hover:text-[#ff7eb3] sm:text-[10px]"
 						>
 							Forgot Password?
@@ -242,7 +242,7 @@
 					<button
 						type="submit"
 						disabled={is_signing_in}
-						class="w-full rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none sm:py-4"
+						class="w-full cursor-pointer rounded-full bg-linear-to-r from-[#ff3377] to-[#ff7eb3] px-4 py-3.5 font-semibold text-white shadow-[0_0_20px_rgba(255,51,119,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_25px_rgba(255,51,119,0.5)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none sm:py-4"
 					>
 						{#if is_signing_in}
 							<svg

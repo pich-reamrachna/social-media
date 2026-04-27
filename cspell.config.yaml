@@ -50,3 +50,5 @@ words:
   - recognised
   - truncatable
   - textcard
+ignoreWords:
+  - cooldown
