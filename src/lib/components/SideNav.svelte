@@ -3,6 +3,8 @@
 	import type { SideNavUser } from '$lib/types'
 	import './SideNav.css'
 
+	let is_logging_out = $state(false)
+
 	type NavItem = {
 		label: string
 		path: string
@@ -44,6 +46,36 @@
 			icon: `${current_user?.avatar_url}`
 		}
 	])
+
+	const logout_action = resolve('/logout')
+
+	const handle_logout = async (e: SubmitEvent) => {
+		e.preventDefault()
+		is_logging_out = true
+		try {
+			await fetch(logout_action, { method: 'POST' })
+			window.location.href = '/login'
+		} catch {
+			is_logging_out = false
+		}
+	}
+
+	$effect(() => {
+		if (!is_settings_open) return
+
+		const handle = (e: MouseEvent) => {
+			if (
+				(e.target as Element).closest(
+					'.side-nav-settings-wrap, .mobile-nav-settings, .mobile-settings-menu'
+				)
+			)
+				return
+			on_settings_toggle?.()
+		}
+
+		window.addEventListener('click', handle)
+		return () => window.removeEventListener('click', handle)
+	})
 </script>
 
 <nav class="side-nav">
@@ -110,8 +142,36 @@
 
 			{#if is_settings_open}
 				<div class="side-nav-settings-menu">
-					<form method="POST" action={resolve('/logout')}>
-						<button type="submit" class="side-nav-settings-action">Logout</button>
+					<form method="POST" action={logout_action} onsubmit={handle_logout}>
+						<button type="submit" class="side-nav-settings-action" disabled={is_logging_out}>
+							<span class="logout-action-content">
+								<svg
+									class="logout-spin-icon"
+									class:hidden={!is_logging_out}
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+								>
+									<circle
+										class="opacity-25"
+										cx="12"
+										cy="12"
+										r="10"
+										stroke="currentColor"
+										stroke-width="4"
+									></circle>
+									<path
+										class="opacity-75"
+										fill="currentColor"
+										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+									></path>
+								</svg>
+								<span class="logout-action-label"
+									>{is_logging_out ? 'Logging out...' : 'Logout'}</span
+								>
+							</span>
+						</button>
 					</form>
 				</div>
 			{/if}
@@ -198,8 +258,28 @@
 
 {#if is_settings_open}
 	<div class="mobile-settings-menu">
-		<form method="POST" action={resolve('/logout')}>
-			<button type="submit" class="mobile-settings-action">Logout</button>
+		<form method="POST" action={logout_action} onsubmit={handle_logout}>
+			<button type="submit" class="mobile-settings-action" disabled={is_logging_out}>
+				<span class="logout-action-content">
+					<svg
+						class="logout-spin-icon"
+						class:hidden={!is_logging_out}
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
+						></circle>
+						<path
+							class="opacity-75"
+							fill="currentColor"
+							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+						></path>
+					</svg>
+					<span class="logout-action-label">{is_logging_out ? 'Logging out...' : 'Logout'}</span>
+				</span>
+			</button>
 		</form>
 	</div>
 {/if}
