@@ -1,10 +1,15 @@
 <script lang="ts">
 	import './layout.css'
 	import { navigating } from '$app/state'
+	import { afterNavigate } from '$app/navigation'
 	import HomeSkeleton from '$lib/components/HomeSkeleton.svelte'
 	import ProfileSkeleton from '$lib/components/ProfileSkeleton.svelte'
 
 	const { children } = $props()
+
+	afterNavigate(({ type }) => {
+		if (type === 'enter') window.scrollTo({ top: 0, behavior: 'instant' })
+	})
 
 	const dest = $derived(navigating.to?.url.pathname ?? null)
 	const is_same_page = $derived(dest !== null && dest === (navigating.from?.url.pathname ?? null))
