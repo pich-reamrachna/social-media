@@ -146,6 +146,9 @@
 .side-nav-settings-action,
 .mobile-settings-action {
 	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
 	border: none;
 	border-radius: 0.8rem;
 	background: transparent;
@@ -154,6 +157,7 @@
 	font-size: 0.9rem;
 	font-weight: 700;
 	text-align: left;
+	white-space: nowrap;
 	padding: 0.75rem 0.85rem;
 	cursor: pointer;
 	transition: background-color 0.15s ease;
@@ -162,6 +166,41 @@
 .side-nav-settings-action:hover,
 .mobile-settings-action:hover {
 	background-color: rgba(248, 113, 113, 0.08);
+}
+
+.logout-action-content {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.logout-spin-icon.hidden {
+	visibility: hidden;
+}
+
+.logout-action-label {
+	white-space: nowrap;
+}
+
+.side-nav-settings-action:disabled,
+.mobile-settings-action:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.logout-spin-icon {
+	display: inline-block;
+	width: 0.9rem;
+	height: 0.9rem;
+	vertical-align: middle;
+	margin-right: 0.35rem;
+	animation: logout-spin 0.75s linear infinite;
+}
+
+@keyframes logout-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .side-nav-settings-icon {
