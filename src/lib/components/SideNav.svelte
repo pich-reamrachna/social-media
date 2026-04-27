@@ -49,6 +49,17 @@
 
 	const logout_action = resolve('/logout')
 
+	const handle_logout = async (e: SubmitEvent) => {
+		e.preventDefault()
+		is_logging_out = true
+		try {
+			await fetch(logout_action, { method: 'POST' })
+			window.location.href = '/login'
+		} catch {
+			is_logging_out = false
+		}
+	}
+
 	$effect(() => {
 		if (!is_settings_open) return
 
@@ -131,7 +142,7 @@
 
 			{#if is_settings_open}
 				<div class="side-nav-settings-menu">
-					<form method="POST" action={logout_action} onsubmit={() => (is_logging_out = true)}>
+					<form method="POST" action={logout_action} onsubmit={handle_logout}>
 						<button type="submit" class="side-nav-settings-action" disabled={is_logging_out}>
 							<span class="logout-action-content">
 								<svg
@@ -247,7 +258,7 @@
 
 {#if is_settings_open}
 	<div class="mobile-settings-menu">
-		<form method="POST" action={logout_action} onsubmit={() => (is_logging_out = true)}>
+		<form method="POST" action={logout_action} onsubmit={handle_logout}>
 			<button type="submit" class="mobile-settings-action" disabled={is_logging_out}>
 				<span class="logout-action-content">
 					<svg
