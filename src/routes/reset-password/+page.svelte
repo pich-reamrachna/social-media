@@ -4,7 +4,7 @@
 	import type { ActionData, PageData } from './$types'
 	import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
 
-	let { data, form }: { data: PageData; form: ActionData } = $props()
+	const { data, form }: { data: PageData; form: ActionData } = $props()
 
 	let password = $state('')
 	let confirm_password = $state('')
@@ -66,7 +66,7 @@
 	}
 
 	// Check if the form should be disabled
-	let has_errors = $derived(
+	const has_errors = $derived(
 		password_status === 'invalid' ||
 			confirm_password_status === 'invalid' ||
 			!password ||
