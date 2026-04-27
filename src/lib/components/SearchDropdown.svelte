@@ -10,7 +10,8 @@
 		on_open_profile,
 		on_apply_keyword_search,
 		extra_class = '',
-		aria_label = 'Search'
+		aria_label = 'Search',
+		input_id
 	} = $props<{
 		search_query?: string
 		search_users?: SearchUser[]
@@ -19,6 +20,7 @@
 		on_apply_keyword_search?: () => void
 		extra_class?: string
 		aria_label?: string
+		input_id?: string
 	}>()
 </script>
 
@@ -38,6 +40,8 @@
 		/>
 	</svg>
 	<input
+		id={input_id}
+		name="q"
 		type="search"
 		value={search_query}
 		oninput={(e) => on_search_change?.((e.target as HTMLInputElement).value)}

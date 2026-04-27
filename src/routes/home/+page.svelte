@@ -429,6 +429,7 @@
 		<div class="feed-sticky-controls">
 			<PageTopBar title="For You" extra_class="feed-topbar-main" />
 			<SearchDropdown
+				input_id="search-feed"
 				extra_class="feed-search-main"
 				aria_label="Search posts"
 				{search_query}
