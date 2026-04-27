@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit'
-import { consume_rate_limit, get_rate_limit_error, peek_rate_limit } from '$lib/server/rate-limit'
+import { consume_rate_limit, peek_rate_limit } from '$lib/server/rate-limit'
 import { auth } from '$lib/server/auth' // Bring the auth instance back
 import { env } from '$env/dynamic/private'
 import type { Actions, PageServerLoad } from './$types'
@@ -17,7 +17,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	default: async (event) => {
-		const rate_limit_key = `forget_pw:${event.locals.clientAddress ?? 'unknown'}`
+		const client_id =
+			event.locals.clientAddress ??
+			(() => {
+				try {
+					return event.getClientAddress()
+				} catch {
+					return crypto.randomUUID()
+				}
+			})()
+		const rate_limit_key = `forget_pw:${client_id}`
 		const rate_limit = await peek_rate_limit({
 			key: rate_limit_key,
 			...FORGET_PASSWORD_LIMIT
@@ -40,20 +49,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			// THE FIX: Better Auth renamed this method to requestPasswordReset
-			// This safely finds and calls whichever method exists in your installed version
-			// @ts-expect-error - bypassing strict types for a dynamic check
-			const reset_method =
-				auth.api.requestPasswordReset || auth.api.forgetPassword || auth.api.forgotPassword
-
-			if (typeof reset_method !== 'function') {
-				console.error('[forget-password] Missing method. Available APIs:', Object.keys(auth.api))
-				return fail(500, { error_message: 'Server auth misconfiguration.' })
-			}
-
-			// Call the correct method directly on the server
-			// @ts-expect-error - dynamic invocation
-			await reset_method({
+			await auth.api.requestPasswordReset({
 				body: {
 					email,
 					redirectTo: `${env.ORIGIN}/reset-password`

@@ -26,7 +26,16 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
 export const actions: Actions = {
 	default: async (event) => {
-		const rate_limit_key = `reset_pw:${event.locals.clientAddress ?? 'unknown'}`
+		const client_id =
+			event.locals.clientAddress ??
+			(() => {
+				try {
+					return event.getClientAddress()
+				} catch {
+					return crypto.randomUUID()
+				}
+			})()
+		const rate_limit_key = `reset_pw:${client_id}`
 		const rate_limit = await peek_rate_limit({
 			key: rate_limit_key,
 			...RESET_LIMIT
@@ -50,6 +59,17 @@ export const actions: Actions = {
 
 		if (password !== confirm_password) {
 			return fail(400, { error_message: 'Passwords do not match.' })
+		}
+
+		const pw_errors: string[] = []
+		if (password.length < MIN_PASSWORD_LENGTH)
+			pw_errors.push(`be at least ${MIN_PASSWORD_LENGTH} characters`)
+		if (!/[a-z]/.test(password)) pw_errors.push('contain lowercase')
+		if (!/[A-Z]/.test(password)) pw_errors.push('contain uppercase')
+		if (!/\d/.test(password)) pw_errors.push('contain a number')
+		if (!/[^A-Za-z0-9]/.test(password)) pw_errors.push('contain a symbol')
+		if (pw_errors.length > 0) {
+			return fail(400, { error_message: `Password must ${pw_errors.join(', ')}` })
 		}
 
 		try {

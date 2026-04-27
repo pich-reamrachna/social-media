@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms'
 	import { goto } from '$app/navigation'
-	import type { SubmitFunction } from '$app/forms'
 	import type { ActionData } from './$types'
 
-	let { form }: { form: ActionData } = $props()
+	const { form }: { form: ActionData } = $props()
 
 	let is_loading = $state(false)
 	let cooldown_seconds = $state(0)
-	let last_processed_timestamp = $state(0) // Track which submission we processed
+	let last_processed_timestamp = 0
 
 	let timer_interval: ReturnType<typeof setInterval> | undefined
 
@@ -17,15 +16,17 @@
 		if (form?.retry_after && form?.timestamp && form.timestamp !== last_processed_timestamp) {
 			last_processed_timestamp = form.timestamp
 			start_cooldown(form.retry_after)
-		} else if (
-			form?.retry_after &&
-			!form.timestamp &&
-			cooldown_seconds === 0 &&
-			last_processed_timestamp === 0
-		) {
+		} else if (form?.retry_after && !form.timestamp) {
 			// Fallback for the rate limit fail block which doesn't send a timestamp
 			last_processed_timestamp = Date.now()
 			start_cooldown(form.retry_after)
+		}
+
+		return () => {
+			if (timer_interval) {
+				clearInterval(timer_interval)
+				timer_interval = undefined
+			}
 		}
 	})
 
@@ -42,10 +43,10 @@
 		}, 1000)
 	}
 
-	const handle_enhance: SubmitFunction = () => {
+	const handle_enhance = () => {
 		is_loading = true
 
-		return async ({ update }) => {
+		return async ({ update }: { update: (opts?: { reset?: boolean }) => Promise<void> }) => {
 			await update({ reset: false })
 			is_loading = false
 		}
@@ -84,17 +85,13 @@
 					Email Address
 				</label>
 				<div class="relative">
-					<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-						<span class="text-lg font-bold text-neutral-500">@</span>
-					</div>
 					<input
 						id="email"
 						name="email"
 						type="email"
-						value={form?.email ?? ''}
 						placeholder="Enter your email address"
 						disabled={is_loading || cooldown_seconds > 0}
-						class="w-full rounded-xl border border-neutral-800 bg-black py-3 pr-4 pl-12 text-white transition-colors placeholder:text-neutral-600 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+						class="w-full rounded-xl border border-neutral-800 bg-black py-3 pr-4 text-white transition-colors placeholder:text-neutral-600 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 					/>
 				</div>
 			</div>
