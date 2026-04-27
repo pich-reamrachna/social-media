@@ -48,6 +48,23 @@
 	])
 
 	const logout_action = resolve('/logout')
+
+	$effect(() => {
+		if (!is_settings_open) return
+
+		const handle = (e: MouseEvent) => {
+			if (
+				(e.target as Element).closest(
+					'.side-nav-settings-wrap, .mobile-nav-settings, .mobile-settings-menu'
+				)
+			)
+				return
+			on_settings_toggle?.()
+		}
+
+		window.addEventListener('click', handle)
+		return () => window.removeEventListener('click', handle)
+	})
 </script>
 
 <nav class="side-nav">
