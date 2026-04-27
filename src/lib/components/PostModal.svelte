@@ -52,9 +52,21 @@
 	}
 
 	$effect(() => {
+		const scroll_y = window.scrollY
+		const prior_overflow = document.body.style.overflow
+		const prior_position = document.body.style.position
+		const prior_top = document.body.style.top
+		const prior_width = document.body.style.width
 		document.body.style.overflow = 'hidden'
+		document.body.style.position = 'fixed'
+		document.body.style.top = `-${scroll_y}px`
+		document.body.style.width = '100%'
 		return () => {
-			document.body.style.overflow = ''
+			document.body.style.overflow = prior_overflow
+			document.body.style.position = prior_position
+			document.body.style.top = prior_top
+			document.body.style.width = prior_width
+			window.scrollTo(0, scroll_y)
 		}
 	})
 
@@ -373,6 +385,8 @@
 		z-index: 200;
 		background: rgba(0, 0, 0, 0.92);
 		animation: modal-fade 0.18s ease-out;
+		touch-action: none;
+		overscroll-behavior: none;
 	}
 
 	@keyframes modal-fade {
