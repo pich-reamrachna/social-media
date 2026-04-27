@@ -1,6 +1,10 @@
 import { fail, redirect } from '@sveltejs/kit'
 import { consume_rate_limit, get_rate_limit_error, peek_rate_limit } from '$lib/server/rate-limit'
 import { MIN_PASSWORD_LENGTH } from '$lib/constants/auth'
+import { verifyPassword } from 'better-auth/crypto'
+import { db } from '$lib/server/db'
+import { account, verification } from '$lib/server/db/auth.schema'
+import { and, eq } from 'drizzle-orm'
 import type { Actions, PageServerLoad } from './$types'
 
 const RESET_LIMIT = { limit: 5, windowMs: 60_000 }
@@ -8,6 +12,29 @@ const RESET_LIMIT = { limit: 5, windowMs: 60_000 }
 const get_string = (form_data: FormData, key: string) => {
 	const value = form_data.get(key)
 	return typeof value === 'string' ? value.trim() : ''
+}
+
+const validate_password_strength = (password: string): string | undefined => {
+	const errors: string[] = []
+	if (password.length < MIN_PASSWORD_LENGTH)
+		errors.push(`be at least ${MIN_PASSWORD_LENGTH} characters`)
+	if (!/[a-z]/.test(password)) errors.push('contain lowercase')
+	if (!/[A-Z]/.test(password)) errors.push('contain uppercase')
+	if (!/\d/.test(password)) errors.push('contain a number')
+	if (!/[^A-Za-z0-9]/.test(password)) errors.push('contain a symbol')
+	return errors.length > 0 ? `Password must ${errors.join(', ')}` : undefined
+}
+
+const is_same_as_current_password = async (token: string, password: string): Promise<boolean> => {
+	const token_row = await db.query.verification.findFirst({
+		where: eq(verification.identifier, `reset-password:${token}`)
+	})
+	if (!token_row) return false
+	const credential = await db.query.account.findFirst({
+		where: and(eq(account.userId, token_row.value), eq(account.providerId, 'credential'))
+	})
+	if (!credential?.password) return false
+	return verifyPassword({ hash: credential.password, password })
 }
 
 export const load: PageServerLoad = async ({ url, locals }) => {
@@ -61,15 +88,13 @@ export const actions: Actions = {
 			return fail(400, { error_message: 'Passwords do not match.' })
 		}
 
-		const pw_errors: string[] = []
-		if (password.length < MIN_PASSWORD_LENGTH)
-			pw_errors.push(`be at least ${MIN_PASSWORD_LENGTH} characters`)
-		if (!/[a-z]/.test(password)) pw_errors.push('contain lowercase')
-		if (!/[A-Z]/.test(password)) pw_errors.push('contain uppercase')
-		if (!/\d/.test(password)) pw_errors.push('contain a number')
-		if (!/[^A-Za-z0-9]/.test(password)) pw_errors.push('contain a symbol')
-		if (pw_errors.length > 0) {
-			return fail(400, { error_message: `Password must ${pw_errors.join(', ')}` })
+		const strength_error = validate_password_strength(password)
+		if (strength_error) return fail(400, { error_message: strength_error })
+
+		if (await is_same_as_current_password(token, password)) {
+			return fail(400, {
+				error_message: 'New password must be different from your current password.'
+			})
 		}
 
 		try {
