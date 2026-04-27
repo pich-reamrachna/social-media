@@ -68,6 +68,7 @@
 <aside class="right-sidebar">
 	{#if on_search_change}
 		<SearchDropdown
+			input_id="search-sidebar"
 			extra_class="sidebar-search-group"
 			{search_query}
 			{search_users}
