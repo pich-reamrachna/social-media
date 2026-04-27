@@ -73,7 +73,7 @@ export const auth = betterAuth({
 								We received a password reset request for your Y account, but your email address has not been verified yet.
 							</p>
 							<p style="margin-bottom: 24px;">
-								Please sign in to Y and we will send you a verification link to activate your account. Once verified, you can reset your password from your account settings.
+								Please sign in to Y and we will send you a verification link to activate your account. Once verified, you can reset your password later.
 							</p>
 							<p>If you did not request this, you can safely ignore this email.</p>
 						</div>
