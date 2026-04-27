@@ -2,9 +2,28 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Y</title>
+		<meta name="description" content="Y – Share your world." />
+		<meta name="theme-color" content="#ff3377" />
+
+		<!-- Favicon -->
+		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
+
+		<!-- Open Graph -->
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="Y" />
+		<meta property="og:title" content="Y" />
+		<meta property="og:description" content="Y – Share your world." />
+
+		<!-- Twitter Card -->
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:title" content="Y" />
+		<meta name="twitter:description" content="Y – Share your world." />
 		%sveltekit.head%
+		<script>
+			history.scrollRestoration = 'manual'
+		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div id="sveltekit-body-wrapper">%sveltekit.body%</div>

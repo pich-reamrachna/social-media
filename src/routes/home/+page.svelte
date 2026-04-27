@@ -355,6 +355,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Home | Y</title>
+</svelte:head>
+
 <div class="home-shell">
 	{#if toast.visible}
 		<div
