@@ -347,6 +347,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{data.profile.name} (@{data.profile.handle}) | Y</title>
+</svelte:head>
+
 <div class="home-shell">
 	{#if toast.visible}
 		<div
