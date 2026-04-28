@@ -26,13 +26,14 @@ const CREDITS: CreditEntry[] = [
 		]
 	},
 	{
-		handle: 'umeshu',
+		handle: 'UmeshU',
 		role: 'Creator',
 		note: 'I like to sleep',
 		contributions: [
 			'Project Sub Lead',
 			'Create Post Function',
-			'Follow Suggestions Function',
+			'Follow & Unfollow Function',
+			'Like & Unlike Function',
 			'Database Architecture'
 		]
 	}
@@ -77,8 +78,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		return [
 			{
 				id: db_user.id,
-				name: db_user.name || db_user.displayUsername || db_user.username!,
-				handle: db_user.username!,
+				name: db_user.name || db_user.displayUsername || db_user.username || credit.handle,
+				handle: db_user.username ?? credit.handle,
 				avatar_url: db_user.image || '/profile.png',
 				is_following: followed_ids.has(db_user.id),
 				role: credit.role,
