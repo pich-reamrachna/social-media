@@ -17,15 +17,9 @@
 		contributions: string[]
 	}
 
-	let contributors = $state<Contributor[]>([])
-	let is_authenticated = $state(false)
-	let current_user_id = $state<string | undefined>(undefined)
-
-	$effect(() => {
-		contributors = props.data.contributors as Contributor[]
-		is_authenticated = props.data.is_authenticated as boolean
-		current_user_id = props.data.current_user_id as string | undefined
-	})
+	const contributors = $derived(props.data.contributors as Contributor[])
+	const is_authenticated = $derived(props.data.is_authenticated as boolean)
+	const current_user_id = $derived(props.data.current_user_id as string | undefined)
 
 	const follow_states = $state<Record<string, boolean>>({})
 	const follow_pending = $state<Record<string, boolean>>({})
@@ -116,7 +110,14 @@
 			</div>
 		{/if}
 
-		<button type="button" class="back-link" onclick={() => history.back()}>
+		<button
+			type="button"
+			class="back-link"
+			onclick={() => {
+				if (history.length > 1) history.back()
+				else goto(resolve('/home'))
+			}}
+		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				class="back-icon"
