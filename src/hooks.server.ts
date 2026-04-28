@@ -13,7 +13,6 @@ const SECURITY_HEADERS = {
 	'X-Content-Type-Options': 'nosniff'
 } as const
 
-const AUTH_ROUTES = new Set(['/login', '/register'])
 const PROTECTED_ROUTE_PREFIXES = ['/home', '/profile', '/api']
 
 const is_protected_route = (pathname: string) =>
@@ -22,16 +21,12 @@ const is_protected_route = (pathname: string) =>
 	)
 
 const should_load_session = (pathname: string) => {
-	if (pathname === '/' || AUTH_ROUTES.has(pathname) || is_protected_route(pathname)) {
-		return true
-	}
-
 	// Skip auth work for app internals and static assets.
 	if (pathname.startsWith('/_app/') || /\.[A-Za-z0-9]+$/.test(pathname)) {
 		return false
 	}
 
-	return false
+	return true
 }
 
 const get_first_forwarded_address = (value: string | null) => {
@@ -90,7 +85,10 @@ const load_session_if_needed = async (
 		const session_started_at = dev ? performance.now() : 0
 		const session = await auth.api.getSession({
 			headers: event.request.headers,
-			query: is_protected_route(pathname) ? { disableCookieCache: true } : undefined
+			query:
+				is_protected_route(pathname) || event.request.method === 'POST'
+					? { disableCookieCache: true }
+					: undefined
 		})
 		if (dev) {
 			console.info(

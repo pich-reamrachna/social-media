@@ -142,6 +142,7 @@
 
 			{#if is_settings_open}
 				<div class="side-nav-settings-menu">
+					<a href={resolve('/credits' as '/')} class="side-nav-settings-credits">Credits</a>
 					<form method="POST" action={logout_action} onsubmit={handle_logout}>
 						<button type="submit" class="side-nav-settings-action" disabled={is_logging_out}>
 							<span class="logout-action-content">
@@ -258,6 +259,9 @@
 
 {#if is_settings_open}
 	<div class="mobile-settings-menu">
+		<a href={resolve('/credits' as '/')} class="side-nav-settings-credits mobile-settings-credits"
+			>Credits</a
+		>
 		<form method="POST" action={logout_action} onsubmit={handle_logout}>
 			<button type="submit" class="mobile-settings-action" disabled={is_logging_out}>
 				<span class="logout-action-content">
