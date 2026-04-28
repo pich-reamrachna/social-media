@@ -60,7 +60,7 @@
 	</div>
 
 	<div
-		class="flex w-full flex-1 flex-col items-center justify-center overflow-y-auto bg-[#111111] px-7 py-8 sm:px-10 sm:py-12 lg:w-1/2 lg:px-12 lg:py-24"
+		class="flex min-h-dvh w-full flex-col items-center justify-center bg-[#111111] px-7 py-8 sm:px-10 sm:py-12 lg:min-h-0 lg:w-1/2 lg:px-12 lg:py-24"
 	>
 		<div class="mb-6 w-full max-w-md lg:hidden">
 			<h1
