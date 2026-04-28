@@ -110,7 +110,7 @@
 </script>
 
 <div
-	class="flex min-h-screen overflow-x-hidden bg-[#0d0d0d] font-sans text-gray-100 selection:bg-pink-500 selection:text-white"
+	class="flex min-h-dvh bg-[#0d0d0d] font-sans text-gray-100 selection:bg-pink-500 selection:text-white"
 >
 	<div
 		class="relative hidden flex-col justify-between bg-linear-to-br from-[#1a0f14] via-[#0d0d0d] to-[#0a0a0a] p-16 lg:flex lg:w-1/2"
