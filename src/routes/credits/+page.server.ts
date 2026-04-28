@@ -26,13 +26,14 @@ const CREDITS: CreditEntry[] = [
 		]
 	},
 	{
-		handle: 'umeshu',
+		handle: 'UmeshU',
 		role: 'Creator',
 		note: 'I like to sleep',
 		contributions: [
 			'Project Sub Lead',
 			'Create Post Function',
-			'Follow Suggestions Function',
+			'Follow & Unfollow Function',
+			'Like & Unlike Function',
 			'Database Architecture'
 		]
 	}
