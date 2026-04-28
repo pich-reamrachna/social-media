@@ -15,10 +15,9 @@ type CreditEntry = {
 const CREDITS: CreditEntry[] = [
 	{
 		handle: 'deerbambii',
-		role: 'Creator',
-		note: 'I eat ice24/7',
+		role: 'Project Lead',
+		note: 'I eat ice24/7 - ラチナ',
 		contributions: [
-			'Project Lead',
 			'UX/UI: View Post, Credit Page, Toast Messages',
 			'Authentication Flow',
 			'Search Function',
@@ -26,15 +25,31 @@ const CREDITS: CreditEntry[] = [
 		]
 	},
 	{
-		handle: 'UmeshU',
-		role: 'Creator',
-		note: 'I like to sleep',
+		handle: 'umeshu',
+		role: 'Project Sub Lead',
+		note: 'I like to sleep - ラタナ',
 		contributions: [
-			'Project Sub Lead',
 			'Create Post Function',
 			'Follow & Unfollow Function',
 			'Like & Unlike Function',
 			'Database Architecture'
+		]
+	},
+	{
+		handle: 'roza_ah',
+		role: 'Project Member',
+		note: 'I am Roza - ロザ',
+		contributions: ['User Feed UI', 'Responsiveness', 'Refactoring']
+	},
+	{
+		handle: 'bird',
+		role: 'Project Creator',
+		note: 'I am Kimlay - キムライ',
+		contributions: [
+			'Sign Up and Sign In UI',
+			'Profile Page UI',
+			'Edit Profile Function',
+			'Forget Password Function'
 		]
 	}
 ]
@@ -46,7 +61,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		return {
 			contributors: [],
 			current_user_id: locals.user?.id ?? undefined,
-			is_authenticated: false
+			is_authenticated: Boolean(locals.user)
 		}
 	}
 
